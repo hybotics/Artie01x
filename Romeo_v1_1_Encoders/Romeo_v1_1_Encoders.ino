@@ -17,23 +17,18 @@
 #define LEFT 0
 #define RIGHT 1
  
-long coder[2] = {
-  0,0};
-int lastSpeed[2] = {
-  0,0}; 
- 
+long coder[2] = { 0, 0 };
+int lastSpeed[2] = { 0, 0 }; 
  
 void setup(){
-   
   Serial.begin(9600);                            //init the Serial port to print the data
+
   attachInterrupt(LEFT, LwheelSpeed, CHANGE);    //init the interrupt mode for the digital pin 2
   attachInterrupt(RIGHT, RwheelSpeed, CHANGE);   //init the interrupt mode for the digital pin 3
-   
 }
  
-void loop(){
-   
-  static unsigned long timer = 0;                //print manager timer
+void loop (void) {
+  static unsigned long timer = 0;     //  Print manager timer
    
   if(millis() - timer > 100){                  
     Serial.print("Coder value: ");
@@ -42,23 +37,19 @@ void loop(){
     Serial.print(coder[RIGHT]);
     Serial.println("[Right Wheel]");
      
-    lastSpeed[LEFT] = coder[LEFT];   //record the latest speed value
+    lastSpeed[LEFT] = coder[LEFT];    //  Record the latest speed value
     lastSpeed[RIGHT] = coder[RIGHT];
-    coder[LEFT] = 0;                 //clear the data buffer
+    coder[LEFT] = 0;                  //  Clear the data buffer
     coder[RIGHT] = 0;
     timer = millis();
   }
    
 }
  
- 
-void LwheelSpeed()
-{
-  coder[LEFT] ++;  //count the left wheel encoder interrupts
+void LwheelSpeed() {
+  coder[LEFT] ++;                     //  Count the left wheel encoder interrupts
 }
  
- 
-void RwheelSpeed()
-{
-  coder[RIGHT] ++; //count the right wheel encoder interrupts
+void RwheelSpeed() {
+  coder[RIGHT] ++;                    //  Count the right wheel encoder interrupts
 }
