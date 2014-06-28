@@ -1,7 +1,7 @@
 /*
 	Program: 	W.A.L.T.E.R. 2.0, Navigation_03x.h - Navigation Control Program sketch header file
-	Date:		26-Jun-2014
-	Version:	0.3.0 ALPHA
+	Date:		28-Jun-2014
+	Version:	0.1.1 ALPHA
 
 	Platform:	Arduino Mega 2560 ADK,
 					Lynxmotion's SSC-32 Servo Controller,
@@ -25,13 +25,12 @@
 
 #define	I2C_SLAVE_ADDRESS				0x50
 
-#define	BUILD_VERSION					"0.3.0"
-#define	BUILD_DATE 						"26-Jun-2014"
-#define	BUILD_BOARD						"Arduino Mega 2560 ADK and Lynxmotion's SSC-32"
+#define	BUILD_VERSION					"0.1.1"
+#define	BUILD_DATE 						"28-Jun-2014"
+#define	BUILD_BOARD						"Romeo v1.1 All In One (Arduino Uno compatible)"
 
 #define	LOOP_DELAY_SECONDS				10
 #define STARTUP_DELAY_SECONDS			7
-#define	DOING_MOTOR_CALIBRATION			false
 
 /*
 	These settings control whether standard information is displayed
@@ -61,15 +60,8 @@
 #define HAVE_7SEGMENT_DISPLAYS			false
 
 /*********************************************************
-	Arduino Mega ADK (Arduino) Settings
+	Romeo v1.1 All In One Microcontroller (Arduino) Settings
 *********************************************************/
-
-//	For the toneAC tone library
-#define SPEAKER_OUT_ONE					11
-#define	SPEAKER_OUT_TWO					12
-
-//	Standard Buzzer/Speaker
-#define	SPEAKER_OUT						52
 
 /*
 	Serial ports
@@ -79,25 +71,12 @@
 #define	SERIAL_CONSOLE_RX_PIN			0
 #define	SERIAL_CONSOLE_TX_PIN			1
 
-//	Serial1: RoboClaw 2x5 Motor Controller
-#define	SERIAL_ROBOCLAW_RX_PIN			19
-#define	SERIAL_ROBOCLAW_TX_PIN			18
-
-//	Serial2: SSC-32 Servo Controller
-#define	SERIAL_SSC32_RX_PIN				17
-#define	SERIAL_SSC32_TX_PIN				16
-
-//	Serial3: XBee Wireless Mesh Networking
-#define	SERIAL_XBEE_RX_PIN				15
-#define	SERIAL_XBEE_TX_PIN				14
-
-//	Software Serial: RoboClaw 2x5 Motor Controllers
-#define	SERIAL_RESERVED_RX_PIN			21
-#define	SERIAL_RESERVED_TX_PIN			20
-
 /*
 	Peripheral Settings, for Displays, Sound, etc.
 */
+
+#define	WHEEL_ENCODER_LEFT_PIN			2
+#define	WHEEL_ENCODER_RIGHT_PIN			3
 
 //	Display constants
 #define	MAX_NUMBER_7SEG_DISPLAYS		0
@@ -109,34 +88,17 @@
 	Other Resources
 */
 #define	HEARTBEAT_LED 					13
-#define	COLOR_SENSOR_LED				53
+#define	COLOR_SENSOR_LED				12
 
 /*
 	Sensor settings
 */
-#define	MAX_NUMBER_AREA_READINGS		36
-
-//	Parallax PING Untrasonic sensors
-#define	MAX_NUMBER_PING					3
-#define	PING_PIN_BASE					24			//	Digital 24
-#define	PING_MIN_DISTANCE_CM			10.0 		//	In CM, which is approximately 4"
-
-#define	PING_FRONT_CENTER				0
-#define	PING_FRONT_LEFT					1
-#define	PING_FRONT_RIGHT				2
-
-//	Parallax PIR Motion Sensors
-#define PIR_MOTION_PIN_BASE				30 			//	Digital 30
-#define MAX_NUMBER_PIR_MOTION			0
-
-#define	PIR_FRONT_LEFT					0
-#define	PIR_FRONT_RIGHT					1
-#define	PIR_BACK_LEFT					2
-#define	PIR_BACK_RIGHT					3
+#define	MAX_NUMBER_AREA_READINGS		18
+#define AREA_SCAN_DEGREE_INCREMENT		20
 
 //	Sharp GP2Y0A21YK0F IR sensors
 #define	MAX_NUMBER_IR					1
-#define	IR_PIN_BASE						6			//	Analog 6
+#define	IR_PIN_BASE						0			//	Analog 0
 #define IR_MIN_DISTANCE_CM				14.0 		//	In CM, which is approximately 5"
 
 #define	IR_FRONT_CENTER					0
@@ -144,27 +106,12 @@
 #define	IR_FRONT_RIGHT					2
 #define	IR_BACK_RIGHT					3
 
-//	RoboClaw 2x5 Motor Controller Packet Serial constants
-#define	ROBOCLAW_CONTROLLERS			1
-#define	ROBOCLAW_SERIAL_BASE_ADDR		0x80
-
-#define	ROBOCLAW_KP						0x00010000
-#define	ROBOCLAW_KI						0x00008000
-#define	ROBOCLAW_KD						0x00004000
-#define	ROBOCLAW_QPPS					44000
-
-#define ROBOCLAW_MOTOR_LEFT_NAME		"Left Gear Motor"
-#define ROBOCLAW_MOTOR_RIGHT_NAME		"Right Gear Motor"
-
-#define GEAR_MOTOR_RAMP_SPEED_INCR		20
-#define GEAR_MOTOR_RIGHT_RAMP_INCR		20
-#define GEAR_MOTOR_LEFT_RAMP_INCR		20
 /*********************************************************
 	Sound generation constants
 *********************************************************/
 
 /*********************************************************
-	Lynxmotion SSC-32 Servo Controller Settings
+	Servo Settings
 *********************************************************/
 
 #define	SERVO_MAX_DEGREES				90
@@ -172,15 +119,15 @@
 #define	SERVO_MOVE_SPEED				4000		//	uS per second
 
 //	Lesser = Right, Greater = Left
-#define	SERVO_MAIN_PAN_PIN				0
+#define	SERVO_MAIN_PAN_PIN				8
 #define SERVO_MAIN_PAN_NAME				"Main Pan"
 #define	SERVO_MAIN_PAN_HOME				SERVO_CENTER_MS
-#define	SERVO_MAIN_PAN_OFFSET			-50
-#define	SERVO_MAIN_PAN_RIGHT_MIN		600
+#define	SERVO_MAIN_PAN_OFFSET			35
+#define	SERVO_MAIN_PAN_RIGHT_MIN		500
 #define	SERVO_MAIN_PAN_LEFT_MAX			2500
 
 //	Greater = Down, Lesser = Up
-#define	SERVO_MAIN_TILT_PIN				1
+#define	SERVO_MAIN_TILT_PIN				9
 #define SERVO_MAIN_TILT_NAME			"Main Tilt"
 #define	SERVO_MAIN_TILT_HOME			SERVO_CENTER_MS
 #define	SERVO_MAIN_TILT_OFFSET			0
@@ -188,7 +135,7 @@
 #define	SERVO_MAIN_TILT_DOWN_MAX		2500
 
 //	Lesser = Right, Greater = Left
-#define	SERVO_CAMERA_PAN_PIN			2
+#define	SERVO_CAMERA_PAN_PIN			10
 #define SERVO_CAMERA_PAN_NAME			"Camera Pan"
 #define	SERVO_CAMERA_PAN_HOME			SERVO_CENTER_MS
 #define	SERVO_CAMERA_PAN_OFFSET			0
@@ -196,7 +143,7 @@
 #define	SERVO_CAMERA_PAN_LEFT_MAX		2500
 
 //	Greater = Down, Lesser = Up
-#define	SERVO_CAMERA_TILT_PIN			3
+#define	SERVO_CAMERA_TILT_PIN			11
 #define SERVO_CAMERA_TILT_NAME			"Camera Tilt"
 #define	SERVO_CAMERA_TILT_HOME			SERVO_CENTER_MS
 #define	SERVO_CAMERA_TILT_OFFSET		0
@@ -212,7 +159,7 @@
 #define	SERVO_GRIP_LIFT_MAX				1750
 
 //	Lesser = , Greater = 
-#define	SERVO_GRIP_ELBOW_PIN			5
+#define	SERVO_GRIP_ELBOW_PIN			6
 #define SERVO_GRIP_ELBOW_NAME			"Grip Elbow"
 #define	SERVO_GRIP_ELBOW_HOME			SERVO_CENTER_MS
 #define	SERVO_GRIP_ELBOW_OFFSET			0
@@ -268,46 +215,6 @@
 #define	SERVO_MOTOR_LEFT_DIRECTION		false
 #define	SERVO_MOTOR_LEFT_MIN			500
 #define	SERVO_MOTOR_LEFT_MAX			2500
-
-//	Right Servo Motor assignments, Lesser = , Greater =
-#define	SERVO_MOTOR_RIGHT_PIN			13
-#define SERVO_MOTOR_RIGHT_NAME			"Right Servo Motor"
-#define	SERVO_MOTOR_RIGHT_NEUTRAL		SERVO_MOTOR_NEUTRAL
-#define	SERVO_MOTOR_RIGHT_OFFSET		25
-#define	SERVO_MOTOR_RIGHT_SPEED_ADJ		35
-#define SERVO_MOTOR_RIGHT_DIRECTION		true
-#define	SERVO_MOTOR_RIGHT_MIN			500
-#define	SERVO_MOTOR_RIGHT_MAX			2500
-
-#define	SERVO_MOTOR_MIN_SPEED			-1000
-#define	SERVO_MOTOR_MAX_SPEED			1000
-#define SERVO_MOTOR_SPEED_INCR			25
-#define SERVO_MOTOR_RAMP_DELAY_MS		75
-
-//	Servo Motor gears (speeds)
-#define	SERVO_MOTOR_NEUTRAL				0
-
-#define	SERVO_MOTOR_GEAR_01				50
-#define	SERVO_MOTOR_GEAR_02				100
-#define	SERVO_MOTOR_GEAR_03				200
-#define	SERVO_MOTOR_GEAR_04				300
-#define	SERVO_MOTOR_GEAR_05				400
-#define	SERVO_MOTOR_GEAR_06				500
-#define	SERVO_MOTOR_GEAR_07				600
-#define	SERVO_MOTOR_GEAR_08				700
-#define	SERVO_MOTOR_GEAR_09				800
-#define	SERVO_MOTOR_GEAR_10				975
-
-#define	SERVO_MOTOR_REVERSE_01			-50
-#define	SERVO_MOTOR_REVERSE_02			-100
-#define	SERVO_MOTOR_REVERSE_03			-200
-#define	SERVO_MOTOR_REVERSE_04			-300
-#define	SERVO_MOTOR_REVERSE_05			-400
-#define	SERVO_MOTOR_REVERSE_06			-500
-#define	SERVO_MOTOR_REVERSE_07			-600
-#define	SERVO_MOTOR_REVERSE_08			-700
-#define	SERVO_MOTOR_REVERSE_09			-800
-#define	SERVO_MOTOR_REVERSE_10			-975
 
 /*********************************************************
 	Structs for data we store on various onboard devices
@@ -395,7 +302,6 @@ struct DistanceObject {
 //	For areaScan() readings
 struct AreaScanReading {
 	float ir;
-	uint16_t ping;
 
 	ColorSensor color;
 	HeatSensor heat;
@@ -405,6 +311,8 @@ struct AreaScanReading {
 
 //	Continuous Rotation Servos - R/C PWM control mode parameters
 struct ServoMotor {
+	Servo servo;
+
 	uint8_t pin;
 	String descr;
 
@@ -443,7 +351,9 @@ struct GearMotor {
 };
 
 //	Standard R/C Servos
-struct Servo {
+struct StandardServo {
+	Servo servo;
+
 	uint8_t pin;
 	String descr;
 
