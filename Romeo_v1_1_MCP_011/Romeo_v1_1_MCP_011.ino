@@ -50,7 +50,7 @@
 #include <Adafruit_TMP006.h>
 #include <Adafruit_TCS34725.h>
 
-#include "Romeo_v1_1_MCP.h"
+#include "Romeo_v1_1_MCP_011.h"
 
 //  Standard PWM DC control
 int E1 = 5;                           //  M1 Speed Control

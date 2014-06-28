@@ -1,7 +1,7 @@
 /*
 	Program: 	W.A.L.T.E.R. 2.0, Navigation_03x.h - Navigation Control Program sketch header file
 	Date:		28-Jun-2014
-	Version:	0.1.1 ALPHA
+	Version:	0.2.0 ALPHA
 
 	Platform:	Arduino Mega 2560 ADK,
 					Lynxmotion's SSC-32 Servo Controller,

@@ -1,7 +1,7 @@
 /*
   Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP)
   Date:         28-Jun-2014
-  Version:      0.1.1 ALPHA
+  Version:      0.2.0 ALPHA
 
   Platform:     DFRobot Romeo v1.1 Microcntroller (Arduino Uno compatible)
 
@@ -20,6 +20,10 @@
 
                 I've cut the header file down to just what is needed here.
                 -------------------------------------------------------------------------------
+				v0.2.0 ALPHA 28-Jun-2014:
+				Starting to work on roving behaviors. Also need to test the IR sensor. There is
+					a slight glitch in the area scanner - it doesn't go all the way to the right.
+				-------------------------------------------------------------------------------
 
   Dependencies: Adafruit libraries:
                   Adafruit_Sensor, Adafruit_TMP006, and Adafruit_TCS34725, Adafruit_LEDBackpack,
@@ -50,7 +54,7 @@
 #include <Adafruit_TMP006.h>
 #include <Adafruit_TCS34725.h>
 
-#include "Romeo_v1_1_MCP.h"
+#include "Romeo_v1_1_MCP_02x.h"
 
 //  Standard PWM DC control
 int E1 = 5;                           //  M1 Speed Control
