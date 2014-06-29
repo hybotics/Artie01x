@@ -4,37 +4,61 @@ int E2 = 6;     //M2 Speed Control
 int M1 = 4;    //M1 Direction Control
 int M2 = 7;    //M1 Direction Control
  
-void stop (void) {
+void stop (byte durationMS = 0) {
   digitalWrite(E1, LOW);  
   digitalWrite(E2, LOW);     
+
+  if (durationMS > 0) {
+    delay(durationMS);
+  }
 }
 
-void forward (char a, char b) {
-  analogWrite (E1, a);      //PWM Speed Control
+void forward (char a, char b, byte durationMS = 0) {
+  analogWrite (E1, a);
   digitalWrite(M1, HIGH);   
   analogWrite (E2, b);   
   digitalWrite(M2, HIGH);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+    stop();
+  }
 } 
 
-void reverse (char a, char b) {
+void reverse (char a, char b, byte durationMS = 0) {
   analogWrite (E1, a);
   digitalWrite(M1, LOW);  
   analogWrite (E2, b);   
   digitalWrite(M2, LOW);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+    stop();
+  }
 }
 
-void turnLeft (char a, char b) {
+void turnLeft (char a, char b, byte durationMS = 0) {
   analogWrite (E1, a);
   digitalWrite(M1, LOW);   
   analogWrite (E2, b);   
   digitalWrite(M2, HIGH);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+    stop();
+  }
 }
 
-void turnRight (char a, char b) {
+void turnRight (char a, char b, byte durationMS = 0) {
   analogWrite (E1, a);
   digitalWrite(M1, HIGH);   
   analogWrite (E2, b);   
   digitalWrite(M2, LOW);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+    stop();
+  }
 }
 
 void setup (void) {
@@ -53,6 +77,8 @@ void loop(void) {
   char val;
 
   if (Serial.available()) {
+    Serial.println(F("Processing serial command.."));
+
     val = Serial.read();
 
     if (val != -1) {
@@ -93,5 +119,38 @@ void loop(void) {
       }
     }
       else stop(); 
+  }/* else {
+    //  Perform a sequence of maneuvers
+//    Serial.println(F("Performing maneuvers.."));
+//    Serial.println();
+
+//    Serial.println(F("Moving forward.."));
+    forward(100, 100, 250);
+
+//    Serial.println(F("Turning LEFT.."));
+    turnLeft(100, 100, 250);
+
+//    Serial.println(F("Moving forward.."));
+    forward(100, 100, 250);
+
+//    Serial.println(F("Turning LEFT.."));
+    turnLeft(100, 100, 250);
+
+//    Serial.println(F("Moving forward.."));
+    forward(100, 100, 250);
+
+//    Serial.println(F("Turning LEFT.."));
+    turnLeft(100, 100, 250);
+
+//    Serial.println(F("Moving forward.."));
+    forward(100, 100, 250);
+
+//    Serial.println(F("Stopping motors.."));
+    stop(2000);
   }
+*/
+
+//  Serial.println(F("Turning RIGHT.."));
+//  Serial.println(F("Reversing.."));
+
 }

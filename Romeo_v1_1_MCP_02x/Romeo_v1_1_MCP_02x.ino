@@ -253,57 +253,40 @@ void stop (void) {
 }
 
 //  Move forward
-void forward (char a, char b, short ms = 0) {
+void forward (char a, char b) {
   analogWrite (E1, a);                //  PWM Speed Control
   digitalWrite(M1, HIGH);   
 
   analogWrite (E2, b);   
   digitalWrite(M2, HIGH);
-
-  if (ms > 0) {
-    delay(ms);
-  }
 }
 
 //  Move backward 
-void reverse (char a, char b, short ms = 0) {
+void reverse (char a, char b) {
   analogWrite (E1, a);
   digitalWrite(M1, LOW);  
 
   analogWrite (E2, b);   
   digitalWrite(M2, LOW);
-
-  if (ms > 0) {
-    delay(ms);
-  }
 }
 
 //  Turn Left
-void turnLeft (char a, char b, short ms = 0) {
+void turnLeft (char a, char b) {
   analogWrite (E1, a);
   digitalWrite(M1, LOW);   
 
   analogWrite (E2, b);   
   digitalWrite(M2, HIGH);
-
-  if (ms > 0) {
-    delay(ms);
-  }
 }
 
 //  Turn Right
-void turnRight (char a, char b, short ms = 0) {
+void turnRight (char a, char b) {
   analogWrite (E1, a);
   digitalWrite(M1, HIGH);   
 
   analogWrite (E2, b);   
   digitalWrite(M2, LOW);
-
-  if (ms > 0) {
-    delay(ms);
-  }
 }
-
 
 /************************************************************/
 /*  Sound Generation routines               */
@@ -723,6 +706,8 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
     nrAreaReadings = -1;
     areaScanValid = false;
   } else {
+    console.println(F("The area scan is valid.."));
+
     //  Robot has not moved
     hasNotMoved = true;
 
@@ -732,6 +717,8 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
     //  This area scan is valid
     areaScanValid = true;
   }
+
+  console.println(F("Leaving the area scanner.."));
 
   return errorStatus;
 }
@@ -744,16 +731,21 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
 
   if (distObj->farthestPosIR < 0) {
     //  Turn to the right
-    turnRight(50, 50, 100);
+    turnRight(50, 50);
+    delay(2000);
     forward(50, 50);
+    delay(2000);
   } else if (distObj->farthestPosIR > 0) {
     //  Turn to the left
-    turnLeft(50, 50, 100);
+    turnLeft(50, 50);
+    delay(2000);
     forward(50, 50);
+    delay(2000);
   } else {
     //  Backup and scan again
     stop();
-    reverse(50, 50, 250);
+    reverse(50, 50);
+    delay(2000);
     stop();
 
     errorStatus = scanArea(pan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
@@ -767,6 +759,36 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
 /********************************************************************/
 
 /*
+  Show announcement message on the desired port.
+*/
+void announce (BMSerial *port) {
+  port->println();
+  port->print("4WD Rover Master Control Program (MCP), version ");
+  port->print(BUILD_VERSION);
+  port->print(" on ");
+  port->println(BUILD_DATE);
+  port->print("  for the ");
+  port->print(BUILD_BOARD);
+  port->println(".");
+  port->println();
+
+  port->println("Keyboard control is open..");
+}
+
+/*
+    Process error conditions
+*/
+void processError (byte errCode, String errMsg) {
+  console.print(F("Error in routine '"));
+  console.print(lastRoutine);
+  console.print(F("', Code: "));
+  console.print(errCode);
+  console.print(F(", Message: "));
+  console.print(errMsg);
+  console.println(F("!"));
+}
+
+/*
     Pulses a digital pin for a duration in ms
 */
 void pulseDigital(int pin, int duration) {
@@ -776,6 +798,15 @@ void pulseDigital(int pin, int duration) {
   delay(duration);          // Wait for duration ms
   digitalWrite(pin, LOW);       // Turn the pin OFF by making the voltage LOW (0V)
   delay(duration);          // Wait for duration ms
+}
+
+/*
+  Convert a temperature in Celsius to Fahrenheit
+*/
+float toFahrenheit (float celsius) {
+  lastRoutine = String(F("toFahrenheit"));
+
+  return (celsius * 1.8) + 32;
 }
 
 /*
@@ -795,28 +826,6 @@ String trimTrailingZeros (String st) {
   }
 
   return newStr;
-}
-
-/*
-  Convert a temperature in Celsius to Fahrenheit
-*/
-float toFahrenheit (float celsius) {
-  lastRoutine = String(F("toFahrenheit"));
-
-  return (celsius * 1.8) + 32;
-}
-
-/*
-    Process error conditions
-*/
-void processError (byte errCode, String errMsg) {
-  console.print(F("Error in routine '"));
-  console.print(lastRoutine);
-  console.print(F("', Code: "));
-  console.print(errCode);
-  console.print(F(", Message: "));
-  console.print(errMsg);
-  console.println(F("!"));
 }
 
 /*
@@ -840,23 +849,6 @@ void wait (uint8_t nrSeconds, String text = "") {
   }
 
   console.println();
-}
-
-/*
-  Show announcement message on the desired port.
-*/
-void announce (BMSerial *port) {
-  port->println();
-  port->print("4WD Rover Master Control Program (MCP), version ");
-  port->print(BUILD_VERSION);
-  port->print(" on ");
-  port->println(BUILD_DATE);
-  port->print("  for the ");
-  port->print(BUILD_BOARD);
-  port->println(".");
-  port->println();
-
-  port->println("Keyboard control is open..");
 }
 
 /********************************************************************/
@@ -1005,15 +997,23 @@ uint16_t initSensors (void) {
 
   console.println(F("Initializing Sensors.."));
 
-  if ((errorStatus == 0) && (HAVE_COLOR_SENSOR)) {
+  if (HAVE_COLOR_SENSOR) {
     //  Initialize the TCS3725 RGB Color sensor (Adafruit)
     if (! rgb.begin()) {
       errorStatus = 604;
       processError(errorStatus, F("There was a problem initializing the TCS34725 RGB color sensor .. check your wiring or I2C Address!"));
+    } else {
+      //  Initialize and turn off the TCS34725 RGB Color sensor's LED
+      pinMode(COLOR_SENSOR_LED, OUTPUT);
+      digitalWrite(COLOR_SENSOR_LED, LOW);
+      delay(250);
+      digitalWrite(COLOR_SENSOR_LED, HIGH);
+      delay(250);
+      digitalWrite(COLOR_SENSOR_LED, LOW);
     }
   }
 
-  if ((errorStatus == 0) && (HAVE_HEAT_SENSOR)) {
+  if (HAVE_HEAT_SENSOR) {
     //  Initialize the TMP006 heat sensor
     if (! heat.begin()) {
       errorStatus = 605;
@@ -1021,7 +1021,7 @@ uint16_t initSensors (void) {
     }
   }
 
-  if ((errorStatus == 0) && (HAVE_DS1307_RTC)) {
+  if (HAVE_DS1307_RTC) {
     console.println(F("     DS1307 Real Time Clock.."));
 
     //  Check to be sure the RTC is running
@@ -1075,6 +1075,7 @@ void setup (void) {
 
   //  Initialize the console port
   console.begin(9600);
+  delay(1000);
   announce(&console);
 
   //  Delay for a few seconds, before starting initialization
@@ -1083,19 +1084,9 @@ void setup (void) {
 
   console.println(F("Initializing Digital Pins.."));
 
-  //  Initialize the LED pin as an output.
+  //  Initialize the heartbeat LED pin as an output.
   pinMode(HEARTBEAT_LED, OUTPUT);
   digitalWrite(HEARTBEAT_LED, LOW);
-
-  if (HAVE_COLOR_SENSOR) {
-    //  Initialize and turn off the TCS34725 RGB Color sensor's LED
-    pinMode(COLOR_SENSOR_LED, OUTPUT);
-    digitalWrite(COLOR_SENSOR_LED, LOW);
-    delay(250);
-    digitalWrite(COLOR_SENSOR_LED, HIGH);
-    delay(250);
-    digitalWrite(COLOR_SENSOR_LED, LOW);
-  }
 
   if (HAVE_7SEGMENT_DISPLAYS) {
     //  Initialize the displays
@@ -1105,14 +1096,16 @@ void setup (void) {
     testDisplays(MAX_NUMBER_7SEG_DISPLAYS);
   }
 
-  //  Initialize all servos
-  initServos();
-
   //  Initialize all sensors
   errorStatus = initSensors();
 
+  //  Initialize all servos
+  initServos();
+
   //  Do an initial scan of the immediate area
+  console.println(F("Doing initial area scan.."));
   scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
+  console.println(F("Leaving setup.."));
 }
 
 /********************************************************************/
@@ -1145,12 +1138,14 @@ void loop (void) {
 
   currentMinute = now.minute();
 
+  console.println(F("Looping.."));
+
   /*
     This is code that only runs ONE time, to initialize
       special cases.
   */
   if (firstLoop) {
-    console.println(F("Entering the main loop.."));
+    console.println(F("Entering loop.."));
 
     lastMinute = currentMinute;
 
@@ -1158,26 +1153,25 @@ void loop (void) {
   }
 
   //  Check for a manual control command from the serial link
+  console.println(F("Checking for master commands.."));
+
   if (console.available()) {
-    console.println(F("Checking for master commands.."));
-    checkSerial(50, 50);
+    checkSerial(100, 100);
   }
 
-  console.println(F("Getting Distance Sensor readings.."));
-
-  //  Get readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
+  //  Check readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
   if (MAX_NUMBER_IR > 0) {
-    //  Read the sensor(s)
-    for (analogPin = 0; analogPin < MAX_NUMBER_IR; analogPin++) { 
-      ir[analogPin] = readSharpGP2Y0A21YK0F(analogPin);
-    }
-
-    displayIR();
+    console.println(F("Checking IR distance sensor readings.."));
 
     //  Let's see if we're too close to an object.. If so, stop and scan the area
     if (ir[IR_FRONT_CENTER] <= IR_MIN_DISTANCE_CM) {
-      console.println(F("I'm too close to something - scanning the area.."));
-      //  Scan the area for a clear path
+      console.println(F("I'm too close to something, backing awaw.."));
+      reverse(100, 100);
+      delay(2000);
+      turnRight(100, 100);
+      delay(2000);
+
+      //  Scan the area for a clear path - stops motors first
       errorStatus = scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
 
       if (errorStatus != 0) {
@@ -1199,10 +1193,23 @@ void loop (void) {
           }
         }
       }
+    } else {
+      //  Let's start moving forward!
+      console.println(F("Moving forward.."));
+      forward(100, 100);
     }
   } else {
     //  Let's start moving forward!
     console.println(F("Moving forward.."));
-    forward(50, 50, 50);
+    forward(100, 100);
+  }
+
+  if (MAX_NUMBER_IR > 0) {
+    //  Read the IR sensor(s)
+    for (analogPin = 0; analogPin < MAX_NUMBER_IR; analogPin++) { 
+      ir[analogPin] = readSharpGP2Y0A21YK0F(analogPin);
+    }
+
+    displayIR();
   }
 }
