@@ -1,3 +1,42 @@
+/*
+  Program:      4WD Rover (DFRobot Baron Rover) Motor and Servo Test sketch
+  Date:         29-Jun-2014
+  Version:      0.1.1 ALPHA
+
+  Platform:     DFRobot Romeo v1.1 Microcntroller (Arduino Uno compatible)
+
+  Purpose:      To have FUN with a little 4WD rover - can control the Rover over a serial link.
+
+                                                  Change Log
+                -------------------------------------------------------------------------------
+                v0.1.0 ALPHA 27-Jun-2014:
+                Initial build from example code on the DFRobot Wiki
+                -------------------------------------------------------------------------------
+                v0.1.1 ALPHA 29-Jun-2014:
+                Motors work when controlled over the serial port.
+                Adding servo test code.
+                -------------------------------------------------------------------------------
+
+  Dependencies: Adafruit libraries:
+                  Adafruit_Sensor, Adafruit_TMP006, and Adafruit_TCS34725, Adafruit_LEDBackpack,
+                  Adafruit_GFX libraries
+
+                Hybotics libraries:
+                  None (Yet)
+
+                Other libraries:
+                  RTClib for the DS1307 (Adafruit's version)
+
+  Comments:     Credit is given, where applicable, for code I did not originate.
+
+  Copyright (c) 2014 Dale A. Weber <hybotics.pdx@gmail.com, @hybotics on App.Net and Twitter>
+*/
+#include <Wire.h>
+#include <Servo.h>
+#include <BMSerial.h>
+
+#include "Romeo_v1_1_Motor_Servo_Test.h"
+
 //Standard PWM DC control
 int E1 = 5;     //M1 Speed Control
 int E2 = 6;     //M2 Speed Control
