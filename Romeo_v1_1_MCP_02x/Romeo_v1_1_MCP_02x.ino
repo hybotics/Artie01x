@@ -20,10 +20,10 @@
 
                 I've cut the header file down to just what is needed here.
                 -------------------------------------------------------------------------------
-				v0.2.0 ALPHA 28-Jun-2014:
-				Starting to work on roving behaviors. Also need to test the IR sensor. There is
-					a slight glitch in the area scanner - it doesn't go all the way to the right.
-				-------------------------------------------------------------------------------
+				        v0.2.0 ALPHA 28-Jun-2014:
+				        Starting to work on roving behaviors. Also need to test the IR sensor. There is
+					        a slight glitch in the area scanner - it doesn't go all the way to the right.
+				        -------------------------------------------------------------------------------
 
   Dependencies: Adafruit libraries:
                   Adafruit_Sensor, Adafruit_TMP006, and Adafruit_TCS34725, Adafruit_LEDBackpack,
@@ -55,6 +55,7 @@
 #include <Adafruit_TCS34725.h>
 
 #include "Romeo_v1_1_MCP_02x.h"
+#include "Pitches.h"
 
 //  Standard PWM DC control
 int E1 = 5;                           //  M1 Speed Control
@@ -64,7 +65,7 @@ int E2 = 6;                           //  M2 Speed Control
 int M2 = 7;                           //  M2 Direction Control
 
 /********************************************************************/
-/*  Bitmaps for the drawBitMap() routines               */
+/*  Bitmaps for the drawBitMap() routines                           */
 /********************************************************************/
 
 static const uint8_t PROGMEM
@@ -168,7 +169,7 @@ static const uint8_t PROGMEM
   };
 
 /************************************************************/
-/*  Initialize global variables               */
+/*  Initialize global variables                             */
 /************************************************************/
 
 /*
@@ -215,7 +216,7 @@ AreaScanReading areaScan[MAX_NUMBER_AREA_READINGS];
 bool areaScanValid = false;
 
 /************************************************************/
-/*  Initialize Objects                    */
+/*  Initialize Objects                                      */
 /************************************************************/
 
 Adafruit_TCS34725 rgb = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
@@ -240,9 +241,9 @@ StandardServo mainPan;
 
 Servo test;
 
-/********************************************************************
-  Basic movement routines - I've added the ms (millisecond) parameter 
-    to provide away to time how long a move is.
+/********************************************************************/
+/*  Basic movement routines - I've added the ms (millisecond)       */
+/*    parameter to provide away to time how long a move is.         */
 /********************************************************************/
 
 //  Stop 
@@ -302,6 +303,124 @@ void turnRight (char a, char b, short ms = 0) {
     delay(ms);
   }
 }
+
+
+/************************************************************/
+/*  Sound Generation routines               */
+/************************************************************/
+
+int r2d2[] = { 16, NOTE_A7, NOTE_G7, NOTE_E7, NOTE_C7, NOTE_D7, NOTE_B7, NOTE_F7, NOTE_C8, NOTE_A7, NOTE_G7, NOTE_E7, NOTE_C7, NOTE_D7, NOTE_B7, NOTE_F7, NOTE_C8 };
+int tones[] = { 20, NOTE_C4, NOTE_CS4, NOTE_D4, NOTE_DS4, NOTE_E4, NOTE_F4, NOTE_FS4, NOTE_G4, NOTE_GS4, NOTE_A4, NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_DS5, NOTE_F5, NOTE_FS5, NOTE_G5, NOTE_A5, NOTE_C6, NOTE_CS6, NOTE_D6, NOTE_DS6, NOTE_F6, NOTE_FS6, NOTE_G6, NOTE_A6, NOTE_C7, NOTE_CS7, NOTE_D7, NOTE_DS7, NOTE_F7, NOTE_FS7, NOTE_G7, NOTE_A7 };
+          // mid C C# D D# E F F# G G# A
+
+/*
+  Play a single tone.
+*/
+void playTone (unsigned long freqHz, uint8_t volume, unsigned long durationMS) {
+//  toneAC(freqHz, volume, durationMS);
+//  noToneAC();
+}
+
+/*
+  Play a sequence of tones.
+*/
+void playSequence (int song[], unsigned long durationMS) {
+  int numTones = song[0];
+  int toneNr;
+
+  for (toneNr = 1; toneNr < numTones; toneNr++) {
+    playTone(song[toneNr], 10, durationMS);
+  }
+}
+
+/*
+  Play a sound - a sequence of pitches (or notes)
+*/
+uint16_t makeSound (uint8_t soundNr, unsigned long durationMS, uint8_t nrTimes, uint32_t sequenceDelayMS) {
+  uint16_t errorStatus = 0;
+  uint8_t volume = 10;
+  uint8_t count;
+
+  for (count = 0; count < nrTimes; count++) {
+    switch (soundNr) {
+      case 1:
+        //  Startup
+        playSequence(r2d2, 150);
+        delay(150);
+        playSequence(r2d2, 150);
+        break;
+
+      case 2:
+        //  Alarm
+        playTone(NOTE_D8, volume, durationMS);
+        delay(150);
+        playTone(NOTE_D8, volume, durationMS);
+        break;
+
+      default:
+        errorStatus = 901;
+        break;
+    }
+
+    if (errorStatus != 0){
+      processError(errorStatus, F("Invalid sound number"));
+      break;
+    } else {
+      delay(sequenceDelayMS);
+    }
+  }
+
+  return errorStatus;
+}
+
+/*
+  Sound an alarm when we need assistance
+*/
+uint16_t soundAlarm (uint8_t nrAlarms) {
+  uint16_t errorStatus = 0;
+  uint8_t alarmCount;
+
+  for (alarmCount = 0; alarmCount < nrAlarms; alarmCount++) {
+    makeSound(1, 150, nrAlarms, 5000);
+  }
+
+  return errorStatus;
+}
+
+/*
+  Call for help!
+
+  We're in a situation we can't get out of on our own.
+*/
+uint16_t callForHelp (uint8_t nrCalls, uint8_t nrAlarms, uint32_t callDelay) {
+  uint16_t errorStatus = 0;
+  uint8_t count;
+
+  //  Send out a call for help every 20 seconds
+  for (count = 0; count < nrCalls; count++) {
+    console.println(F("Help, help, help! I am stuck!"));
+
+    soundAlarm(nrAlarms);
+
+    //  20 second delay between calls for help
+    delay(callDelay);
+  }
+
+  return errorStatus;
+}
+
+/*
+  We can't stop the motors!
+*/
+void runAwayRobot (uint16_t errorStatus) {
+  processError(errorStatus, F("Runaway robot"));
+
+  callForHelp(2, 5, 250);
+}
+
+/********************************************************************/
+/*  Console display routines                                        */
+/********************************************************************/
 
 /*
   Display the TCS34725 RGB color sensor readings
@@ -409,7 +528,7 @@ float readSharpGP2Y0A21YK0F (byte sensorNr) {
 }
 
 /********************************************************************/
-/*  Servo routines                                                  */
+/*  Servo related routines                                          */
 /********************************************************************/
 
 /*
@@ -468,9 +587,9 @@ uint16_t moveServoDegrees (StandardServo *servo, int servoDegrees) {
   
   //  Convert degrees to ms for the servo move
   if (servo->maxDegrees == 90) {
-    servoPulse = SERVO_CENTER_MS + (servoDegrees * 11);
+    servoPulse = SERVO_CENTER_MS + (servoDegrees * 12);
   } else if (servo->maxDegrees == 180) {
-    servoPulse = SERVO_CENTER_MS + ((servoDegrees -90) * 11);
+    servoPulse = SERVO_CENTER_MS + ((servoDegrees -90) * 12);
   } else {
     errorStatus = 202;
   }
@@ -525,6 +644,10 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 
   lastRoutine = String(F("scanArea"));
 
+  //  Stop, so we can do this scan
+  console.println(F("Stopping to scan the area.."));
+  stop();
+
   //  Check the parameters
   if (startDeg > stopDeg) {
     //  Start can't be greater than stop
@@ -556,15 +679,13 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
       /*
         Continue normal processing
       */
-
-      //  Stop, so we can do this scan
-      stop();
-
       readingNr = 0;
+      positionDeg = startDeg;
 
       console.println(F("Scanning the area.."));
 
-      for (positionDeg = startDeg; positionDeg < stopDeg; positionDeg += incrDeg) {
+      while (positionDeg < stopDeg) {
+//      for (positionDeg = startDeg; positionDeg <= stopDeg; positionDeg += incrDeg) {
         errorStatus = moveServoDegrees(pan, positionDeg);
 
         if (errorStatus != 0) {
@@ -588,6 +709,8 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 
           readingNr += 1;
         }
+
+        positionDeg += incrDeg;
       }
 
       //  Send the pan servo back to home position
@@ -619,13 +742,13 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
   uint16_t errorStatus = 0;
 
-  if (distObj->farthestPosPING < 0) {
+  if (distObj->farthestPosIR < 0) {
     //  Turn to the right
-    turnRight(50, 50, 250);
+    turnRight(50, 50, 100);
     forward(50, 50);
-  } else if (distObj->farthestPosPING > 0) {
+  } else if (distObj->farthestPosIR > 0) {
     //  Turn to the left
-    turnLeft(50, 50, 250);
+    turnLeft(50, 50, 100);
     forward(50, 50);
   } else {
     //  Backup and scan again
@@ -736,6 +859,10 @@ void announce (BMSerial *port) {
   port->println("Keyboard control is open..");
 }
 
+/********************************************************************/
+/*  7 segment and 8x8 matrix display routines                       */
+/********************************************************************/
+
 /*
   Clear all the seven segment and matrix displays
 */
@@ -777,6 +904,10 @@ void testDisplays (uint8_t totalDisplays) {
 
   clearDisplays();
 }
+
+/********************************************************************/
+/*  Serial port handling routines                                   */
+/********************************************************************/
 
 /*
   Check for serial port manual commands
@@ -825,6 +956,10 @@ void checkSerial (short leftSpd, short rightSpd) {
     stop();
   }
 }
+
+/********************************************************************/
+/*  initialization routines                                         */
+/********************************************************************/
 
 /*
   Initialize displays
@@ -925,7 +1060,7 @@ void initServos (void) {
 /********************************************************************/
 /*  Runs once to set things up                                      */
 /********************************************************************/
-void setup(void) {
+void setup (void) {
   int i;
 
   //  Set motor control pins to OUTPUTs
@@ -984,9 +1119,47 @@ void setup(void) {
 /*  Runs forever                                                    */
 /********************************************************************/
 void loop (void) {
-/*
+  uint16_t errorStatus = 0;
+
+  //  The current date and time from the DS1307 real time clock
+  DateTime now = clock.now();
+
+  uint16_t displayInt;
+
+  //  Display related variables
+  boolean amTime;
+  uint8_t displayNr = 0, count = 0, readingNr = 0;
+  uint8_t currentHour = now.hour(), nrDisplays = 0;
+
+  uint8_t analogPin = 0;
+  uint8_t digitalPin = 0;
+
+  DistanceObject distObject;
+  ColorSensor colorData;
+  HeatSensor heatData;
+
+  lastRoutine = String(F("LOOP"));
+
+  // Pulse the heartbeat LED
+  pulseDigital(HEARTBEAT_LED, 500);
+
+  currentMinute = now.minute();
+
+  /*
+    This is code that only runs ONE time, to initialize
+      special cases.
+  */
+  if (firstLoop) {
+    console.println(F("Entering the main loop.."));
+
+    lastMinute = currentMinute;
+
+    firstLoop = false;
+  }
+
   //  Check for a manual control command from the serial link
-  if (Serial.available()) {
+  if (console.available()) {
+    console.println(F("Checking for master commands.."));
     checkSerial(50, 50);
   }
 
@@ -994,24 +1167,23 @@ void loop (void) {
 
   //  Get readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
   if (MAX_NUMBER_IR > 0) {
+    //  Read the sensor(s)
     for (analogPin = 0; analogPin < MAX_NUMBER_IR; analogPin++) { 
       ir[analogPin] = readSharpGP2Y0A21YK0F(analogPin);
     }
 
     displayIR();
-  }
 
-  if (MAX_NUMBER_IR > 0) {
     //  Let's see if we're too close to an object.. If so, stop and scan the area
-    if (ir[IR_FRONT_CENTER] < IR_MIN_DISTANCE_CM) {
-      stop();
-
+    if (ir[IR_FRONT_CENTER] <= IR_MIN_DISTANCE_CM) {
+      console.println(F("I'm too close to something - scanning the area.."));
       //  Scan the area for a clear path
       errorStatus = scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
 
       if (errorStatus != 0) {
         processError(errorStatus, F("Unable to scan the area"));
       } else {
+        console.println(F("I'm looking for the closest and farthest objects.."));
         //  Find the closest and farthest objects
         distObject = findDistanceObjects();
 
@@ -1028,6 +1200,9 @@ void loop (void) {
         }
       }
     }
+  } else {
+    //  Let's start moving forward!
+    console.println(F("Moving forward.."));
+    forward(50, 50, 50);
   }
-*/
 }

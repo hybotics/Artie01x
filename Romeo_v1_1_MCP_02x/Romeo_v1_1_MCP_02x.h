@@ -25,8 +25,8 @@
 
 #define	I2C_SLAVE_ADDRESS				0x50
 
-#define	BUILD_VERSION					"0.1.1"
-#define	BUILD_DATE 						"28-Jun-2014"
+#define	BUILD_VERSION					"0.2.0"
+#define	BUILD_DATE 						"28-Jun-2014 ALPHA"
 #define	BUILD_BOARD						"Romeo v1.1 All In One (Arduino Uno compatible)"
 
 #define	LOOP_DELAY_SECONDS				10
