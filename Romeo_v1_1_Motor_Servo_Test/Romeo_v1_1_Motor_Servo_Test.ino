@@ -37,12 +37,23 @@
 
 #include "Romeo_v1_1_Motor_Servo_Test.h"
 
-//Standard PWM DC control
+/*
+  Standard PWM DC control
+*/
 int E1 = 5;     //M1 Speed Control
 int E2 = 6;     //M2 Speed Control
 int M1 = 4;    //M1 Direction Control
 int M2 = 7;    //M1 Direction Control
- 
+
+//  Our pan servo
+Servo mainPan;
+
+/*
+  Code starts here
+*/
+
+
+
 void stop (byte durationMS = 0) {
   digitalWrite(E1, LOW);  
   digitalWrite(E2, LOW);     
@@ -100,6 +111,149 @@ void turnRight (char a, char b, byte durationMS = 0) {
   }
 }
 
+/*
+    Convert a pulse width in ms to inches
+*/
+long microsecondsToInches (long microseconds) {
+  /*
+    According to Parallax's datasheet for the PING))), there are
+      73.746 microseconds per inch (i.e. sound travels at 1130 feet per
+      second).  This gives the distance travelled by the ping, outbound
+      and return, so we divide by 2 to get the distance of the obstacle.
+    See: http://www.parallax.com/dl/docs/prod/acc/28015-PING-v1.3.pdf
+  */
+
+  lastRoutine = String(F("microsecondsToInches"));
+  
+  return microseconds / 74 / 2;
+}
+
+/*
+    Convert a pulse width in ms to a distance in cm
+*/
+long microsecondsToCentimeters (long microseconds) {
+  /*
+    The speed of sound is 340 m/s or 29 microseconds per centimeter.
+
+    The ping travels out and back, so to find the distance of the
+      object we take half of the distance travelled.
+  */
+
+  lastRoutine = String(F("microsecondsToCentimeters"));
+
+  return microseconds / 29 / 2;
+}
+
+/*
+  Parallax Ping))) Sensor 
+
+  This routine reads a PING))) ultrasonic rangefinder and returns the
+    distance to the closest object in range. To do this, it sends a pulse
+    to the sensor to initiate a reading, then listens for a pulse
+    to return.  The length of the returning pulse is proportional to
+    the distance of the object from the sensor.
+
+  The circuit:
+    * +V connection of the PING))) attached to +5V
+    * GND connection of the PING))) attached to ground
+    * SIG connection of the PING))) attached to digital pin 7
+
+  http://www.arduino.cc/en/Tutorial/Ping
+
+  Created 3 Nov 2008
+    by David A. Mellis
+
+  Modified 30-Aug-2011
+    by Tom Igoe
+
+  Modified 09-Aug-2013
+    by Dale Weber
+
+    Set units = true for cm, and false for inches
+*/
+int readParallaxPING (byte sensorNr, boolean units = true) {
+  byte pin = sensorNr + PING_PIN_BASE;
+  long duration;
+  int result;
+
+  lastRoutine = String(F("readParallaxPING"));
+
+  /*
+    The PING))) is triggered by a HIGH pulse of 2 or more microseconds.
+    Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
+  */
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(pin, LOW);
+
+  /*
+    The same pin is used to read the signal from the PING))): a HIGH
+    pulse whose duration is the time (in microseconds) from the sending
+    of the ping to the reception of its echo off of an object.
+  */
+  pinMode(pin, INPUT);
+  duration = pulseIn(pin, HIGH);
+
+  //  Convert the duration into a distance
+  if (units) {
+    //  Return result in cm
+    result = microsecondsToCentimeters(duration);
+  } else {
+    //  Return result in inches.
+    result = microsecondsToInches(duration);
+  }
+ 
+  delay(100);
+  
+  return result;
+}
+
+/* 
+  Function to read a value from a GP2D12 infrared distance sensor and return a
+    distance value in centimeters.
+
+  This sensor should be used with a refresh rate of 36ms or greater.
+
+  Javier Valencia 2008
+
+  float readGP2D12(byte pin)
+
+  It can return -1 if something has gone wrong.
+
+  TODO: Make several readings over a time period, and average them
+    for the final reading.
+*/
+float readSharpGP2D12 (byte sensorNr) {
+  byte pin = sensorNr + IR_PIN_BASE;
+  int tmp;
+
+  lastRoutine = String(F("readSharpGP2D12"));
+
+  tmp = analogRead(pin);
+
+  if (tmp < 3) {
+    return -1.0;                // Invalid value
+  } else {
+    return (6787.0 /((float)tmp - 3.0)) - 4.0;  // Distance in cm
+  }
+}
+
+/*
+  Read distance in cm from a Sharp GP2Y0A21YK0F IR sensor
+*/
+float readSharpGP2Y0A21YK0F (byte sensorNr) {
+  byte pin = sensorNr + IR_PIN_BASE;
+  int reading = analogRead(pin);
+  float distance = (6762.0 / (reading - 9)) - 4;
+
+  lastRoutine = String(F("readSharpGP2Y0A21YK0F"));
+
+  return distance;
+}
+
 void setup (void) {
   int i;
 
@@ -108,7 +262,17 @@ void setup (void) {
     pinMode(i, OUTPUT); 
   }
 
+  //  Setup the pan servo and put it at home position
+  Serial.println(F("Initializing servos.."));
+  mainPan.attach(SERVO_MAIN_PAN_PIN);
+  mainPan.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
+
+  //  Initialize serial port(s)
+  Serial.println(F("Initializing serial port(s).."));
   Serial.begin(9600);
+
+  //  Announce ourselves
+  Serial.println(F("Announcing our presense.."));
   Serial.println(F("Run keyboard control.."));
 }
 
@@ -150,6 +314,17 @@ void loop(void) {
         case 'x':
         case 'X':
           stop();
+          mainPan.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
+          break;
+
+        case 'q':
+        case 'Q':
+          mainPan.write(45);
+          break;
+
+        case 'r':
+        case 'R':
+          mainPan.write(135);
           break;
 
         default:
@@ -157,39 +332,24 @@ void loop(void) {
           break;
       }
     }
-      else stop(); 
-  }/* else {
-    //  Perform a sequence of maneuvers
-//    Serial.println(F("Performing maneuvers.."));
-//    Serial.println();
+  } else {
+    Serial.println(F("No commands to process.."));
 
-//    Serial.println(F("Moving forward.."));
-    forward(100, 100, 250);
+    forward(100, 100);
+    delay(2000);
 
-//    Serial.println(F("Turning LEFT.."));
-    turnLeft(100, 100, 250);
+    turnRight(100, 100);
+    delay(2000);
 
-//    Serial.println(F("Moving forward.."));
-    forward(100, 100, 250);
+    forward(100, 100);
+    delay(2000);
 
-//    Serial.println(F("Turning LEFT.."));
-    turnLeft(100, 100, 250);
+    turnRight(100, 100);
+    delay(2000);
 
-//    Serial.println(F("Moving forward.."));
-    forward(100, 100, 250);
+    forward(100, 100);
+    delay(2000);
 
-//    Serial.println(F("Turning LEFT.."));
-    turnLeft(100, 100, 250);
-
-//    Serial.println(F("Moving forward.."));
-    forward(100, 100, 250);
-
-//    Serial.println(F("Stopping motors.."));
-    stop(2000);
+    stop();
   }
-*/
-
-//  Serial.println(F("Turning RIGHT.."));
-//  Serial.println(F("Reversing.."));
-
 }

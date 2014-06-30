@@ -226,6 +226,7 @@ typedef enum MotorLocation {
 	Back
 };
 
+/*
 struct bmp180Data {
 	sensors_event_t tempEvent;
 	float seaLevelPressure;
@@ -366,5 +367,5 @@ struct StandardServo {
 
 	uint16_t error;
 };
-
+*/
 #endif
