@@ -97,14 +97,23 @@
 #define AREA_SCAN_DEGREE_INCREMENT		20
 
 //	Sharp GP2Y0A21YK0F IR sensors
-#define	MAX_NUMBER_IR					1
+#define	MAX_NUMBER_IR					0
 #define	IR_PIN_BASE						0			//	Analog 0
-#define IR_MIN_DISTANCE_CM				14.0 		//	In CM, which is approximately 5"
+#define IR_MIN_DISTANCE_CM				20.0 		//	In CM, which is approximately 6.3"
 
 #define	IR_FRONT_CENTER					0
 #define	IR_FRONT_LEFT					1
 #define	IR_FRONT_RIGHT					2
 #define	IR_BACK_RIGHT					3
+
+//	Parallax PING Untrasonic sensors
+#define	MAX_NUMBER_PING					1
+#define	PING_PIN_BASE					12			//	Digital 12
+#define	PING_MIN_DISTANCE_CM			20.0 		//	In CM, which is approximately 6.3"
+
+#define	PING_FRONT_CENTER				0
+#define	PING_FRONT_LEFT					1
+#define	PING_FRONT_RIGHT				2
 
 /*********************************************************
 	Sound generation constants
@@ -119,15 +128,15 @@
 #define	SERVO_MOVE_SPEED				4000		//	uS per second
 
 //	Lesser = Right, Greater = Left
-#define	SERVO_MAIN_PAN_PIN				9
+#define	SERVO_MAIN_PAN_PIN				8
 #define SERVO_MAIN_PAN_NAME				"Main Pan"
 #define	SERVO_MAIN_PAN_HOME				SERVO_CENTER_MS
-#define	SERVO_MAIN_PAN_OFFSET			35
+#define	SERVO_MAIN_PAN_OFFSET			65
 #define	SERVO_MAIN_PAN_RIGHT_MIN		500
 #define	SERVO_MAIN_PAN_LEFT_MAX			2500
 
 //	Greater = Down, Lesser = Up
-#define	SERVO_MAIN_TILT_PIN				10
+#define	SERVO_MAIN_TILT_PIN				9
 #define SERVO_MAIN_TILT_NAME			"Main Tilt"
 #define	SERVO_MAIN_TILT_HOME			SERVO_CENTER_MS
 #define	SERVO_MAIN_TILT_OFFSET			0
@@ -135,7 +144,7 @@
 #define	SERVO_MAIN_TILT_DOWN_MAX		2500
 
 //	Lesser = Right, Greater = Left
-#define	SERVO_CAMERA_PAN_PIN			11
+#define	SERVO_CAMERA_PAN_PIN			10
 #define SERVO_CAMERA_PAN_NAME			"Camera Pan"
 #define	SERVO_CAMERA_PAN_HOME			SERVO_CENTER_MS
 #define	SERVO_CAMERA_PAN_OFFSET			0
@@ -143,7 +152,7 @@
 #define	SERVO_CAMERA_PAN_LEFT_MAX		2500
 
 //	Greater = Down, Lesser = Up
-#define	SERVO_CAMERA_TILT_PIN			12
+#define	SERVO_CAMERA_TILT_PIN			11
 #define SERVO_CAMERA_TILT_NAME			"Camera Tilt"
 #define	SERVO_CAMERA_TILT_HOME			SERVO_CENTER_MS
 #define	SERVO_CAMERA_TILT_OFFSET		0
@@ -302,6 +311,7 @@ struct DistanceObject {
 //	For areaScan() readings
 struct AreaScanReading {
 	float ir;
+	uint16_t ping;
 
 	ColorSensor color;
 	HeatSensor heat;

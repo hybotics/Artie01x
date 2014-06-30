@@ -205,6 +205,9 @@ bool hasNotMoved = true;
 //  This will always have the name of the last routine executed before an error
 String lastRoutine;
 
+//  PING Ultrasonic range sensor readings
+int ping[MAX_NUMBER_PING];
+
 //  Total number of area readings taken, or -1 if data is not valid
 int nrAreaReadings;
 
@@ -214,6 +217,9 @@ float ir[MAX_NUMBER_IR];
 //  Area scan readings
 AreaScanReading areaScan[MAX_NUMBER_AREA_READINGS];
 bool areaScanValid = false;
+
+//  Toggle for Manual Control
+bool manualControl = false;
 
 /************************************************************/
 /*  Initialize Objects                                      */
@@ -286,6 +292,20 @@ void turnRight (char a, char b) {
 
   analogWrite (E2, b);   
   digitalWrite(M2, LOW);
+}
+
+void makeRandomTurn (uint16_t durationMS = 0) {
+  if (random(1000) < 500) {
+    turnLeft(150, 150);
+  } else {
+    turnRight(150, 150);
+  }
+
+  if (durationMS > 0) {
+    delay(durationMS);
+  } else {
+    delay(3000);
+  }
 }
 
 /************************************************************/
@@ -478,6 +498,67 @@ void displayIR (void) {
   console.println();
 }
 
+/*
+  Display the readings from the PING Ultrasonic sensors
+*/
+void displayPING (void) {
+  uint8_t sensorNr = 0;
+
+  lastRoutine = String(F("displayPING"));
+  
+  console.println("PING Ultrasonic Sensor readings:");
+  
+  //  Display PING sensor readings (cm)
+  while (sensorNr < MAX_NUMBER_PING) {
+    console.print("Ping #");
+    console.print(sensorNr + 1);
+    console.print(" range = ");
+    console.print(ping[sensorNr]);
+    console.println(" cm");
+
+    sensorNr += 1;
+  }
+ 
+  console.println();
+}
+
+/********************************************************************/
+/*  Sensor related routines                                         */
+/********************************************************************/
+
+/*
+    Convert a pulse width in ms to inches
+*/
+long microsecondsToInches (long microseconds) {
+  /*
+    According to Parallax's datasheet for the PING))), there are
+      73.746 microseconds per inch (i.e. sound travels at 1130 feet per
+      second).  This gives the distance travelled by the ping, outbound
+      and return, so we divide by 2 to get the distance of the obstacle.
+    See: http://www.parallax.com/dl/docs/prod/acc/28015-PING-v1.3.pdf
+  */
+
+  lastRoutine = String(F("microsecondsToInches"));
+  
+  return microseconds / 74 / 2;
+}
+
+/*
+    Convert a pulse width in ms to a distance in cm
+*/
+long microsecondsToCentimeters (long microseconds) {
+  /*
+    The speed of sound is 340 m/s or 29 microseconds per centimeter.
+
+    The ping travels out and back, so to find the distance of the
+      object we take half of the distance travelled.
+  */
+
+  lastRoutine = String(F("microsecondsToCentimeters"));
+
+  return microseconds / 29 / 2;
+}
+
 ColorSensor readColorSensor (void) {
   ColorSensor colorData;
 
@@ -498,18 +579,87 @@ HeatSensor readHeatSensor (void) {
 }
 
 /*
+  Parallax Ping))) Sensor 
+
+  This routine reads a PING))) ultrasonic rangefinder and returns the
+    distance to the closest object in range. To do this, it sends a pulse
+    to the sensor to initiate a reading, then listens for a pulse
+    to return.  The length of the returning pulse is proportional to
+    the distance of the object from the sensor.
+
+  The circuit:
+    * +V connection of the PING))) attached to +5V
+    * GND connection of the PING))) attached to ground
+    * SIG connection of the PING))) attached to digital pin 7
+
+  http://www.arduino.cc/en/Tutorial/Ping
+
+  Created 3 Nov 2008
+    by David A. Mellis
+
+  Modified 30-Aug-2011
+    by Tom Igoe
+
+  Modified 09-Aug-2013
+    by Dale Weber
+
+    Set units = true for cm, and false for inches
+*/
+int readParallaxPING (byte sensorNr, boolean units = true) {
+  byte pin = sensorNr + PING_PIN_BASE;
+  long duration;
+  int result;
+
+  lastRoutine = String(F("readParallaxPING"));
+
+  /*
+    The PING))) is triggered by a HIGH pulse of 2 or more microseconds.
+    Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
+  */
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(pin, LOW);
+
+  /*
+    The same pin is used to read the signal from the PING))): a HIGH
+    pulse whose duration is the time (in microseconds) from the sending
+    of the ping to the reception of its echo off of an object.
+  */
+  pinMode(pin, INPUT);
+  duration = pulseIn(pin, HIGH);
+
+  //  Convert the duration into a distance
+  if (units) {
+    //  Return result in cm
+    result = microsecondsToCentimeters(duration);
+  } else {
+    //  Return result in inches.
+    result = microsecondsToInches(duration);
+  }
+ 
+  delay(100);
+  
+  return result;
+}
+
+/*
   Read distance in cm from a Sharp GP2Y0A21YK0F IR sensor
 */
 float readSharpGP2Y0A21YK0F (byte sensorNr) {
   byte pin = sensorNr + IR_PIN_BASE;
-  int reading = analogRead(pin);
-  float distance = (6762.0 / (reading - 9)) - 4;
+  float reading;
+  float distance;
+
+  reading = float(analogRead(pin));
+  distance = (6762.0 / (reading - 9)) - 4;
 
   lastRoutine = String(F("readSharpGP2Y0A21YK0F"));
 
   return distance;
 }
-
 /********************************************************************/
 /*  Servo related routines                                          */
 /********************************************************************/
@@ -537,6 +687,8 @@ uint16_t moveServoPw (StandardServo *servo, int servoPosition) {
     processError(errorStatus, F("Servo pulse is out of range"));
   } else {
     //  Move the servo
+
+/*
     console.print("(");
     console.print(lastRoutine);
     console.print(") Moving the ");
@@ -544,6 +696,7 @@ uint16_t moveServoPw (StandardServo *servo, int servoPosition) {
     console.print(" servo to position ");
     console.print(servoPosition);
     console.println(" uS..");
+*/
 
     servo->servo.writeMicroseconds(position);
   }
@@ -667,7 +820,7 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 
       console.println(F("Scanning the area.."));
 
-      while (positionDeg < stopDeg) {
+      while (positionDeg <= stopDeg) {
 //      for (positionDeg = startDeg; positionDeg <= stopDeg; positionDeg += incrDeg) {
         errorStatus = moveServoDegrees(pan, positionDeg);
 
@@ -678,9 +831,14 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
           //  Delay to let the pan/tilt stabilize after moving it
           delay(1500);
 
-          //  Take a reading from the pan sensor in cm
-          areaScan[readingNr].ir = readSharpGP2Y0A21YK0F(IR_FRONT_CENTER);
-          areaScan[readingNr].positionDeg = positionDeg;
+          //  Take a reading from our sensor(s)
+          if (MAX_NUMBER_PING > 0) {
+            areaScan[readingNr].ping = readParallaxPING(PING_FRONT_CENTER);
+          }
+
+          if (MAX_NUMBER_IR > 0) {
+            areaScan[readingNr].ir = readSharpGP2Y0A21YK0F(IR_FRONT_CENTER);
+          }
 
           if (HAVE_COLOR_SENSOR) {
             areaScan[readingNr].color = readColorSensor();
@@ -689,6 +847,8 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
           if (HAVE_HEAT_SENSOR) {
             areaScan[readingNr].heat = readHeatSensor();
           }
+          
+          areaScan[readingNr].positionDeg = positionDeg;
 
           readingNr += 1;
         }
@@ -726,29 +886,68 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 /*
   Turn towards the farthest detected object
 */
+uint16_t turnToClosestObject (DistanceObject *distObj, StandardServo *pan) {
+  uint16_t errorStatus = 0;
+  int pingReading;
+
+  if (distObj->closestPosPING < 0) {
+    //  Turn to the right
+    turnRight(150, 150);
+    delay(2500);
+  } else if (distObj->closestPosPING > 0) {
+    //  Turn to the left
+    turnLeft(150, 150);
+    delay(2500);
+  } else {
+    //  Set the pan servo to home position (straight ahead)
+    moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
+    delay(250);
+
+    //  Take a reading from the PING distance sensor
+    pingReading = readParallaxPING(PING_FRONT_CENTER);
+
+    if (pingReading < PING_MIN_DISTANCE_CM) {
+      //  Backup a bit
+      reverse(125, 125);
+      delay(2500);
+
+      makeRandomTurn();
+    }
+  }
+
+  return errorStatus;
+}
+
+/*
+  Turn towards the farthest detected object
+*/
 uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
   uint16_t errorStatus = 0;
+  int pingReading;
 
-  if (distObj->farthestPosIR < 0) {
+  if (distObj->farthestPosPING < 0) {
     //  Turn to the right
-    turnRight(50, 50);
-    delay(2000);
-    forward(50, 50);
-    delay(2000);
-  } else if (distObj->farthestPosIR > 0) {
+    turnRight(150, 150);
+    delay(2500);
+  } else if (distObj->farthestPosPING >= 0) {
     //  Turn to the left
-    turnLeft(50, 50);
-    delay(2000);
-    forward(50, 50);
-    delay(2000);
+    turnLeft(150, 150);
+    delay(2500);
   } else {
-    //  Backup and scan again
-    stop();
-    reverse(50, 50);
-    delay(2000);
-    stop();
+    //  Set the pan servo to home position (straight ahead)
+    moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
+    delay(250);
 
-    errorStatus = scanArea(pan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
+    //  Take a reading from the PING distance sensor
+    pingReading = readParallaxPING(PING_FRONT_CENTER);
+
+    if (pingReading < PING_MIN_DISTANCE_CM) {
+      //  Backup a bit
+      reverse(125, 125);
+      delay(2500);
+
+      makeRandomTurn();
+    }
   }
 
   return errorStatus;
@@ -902,31 +1101,36 @@ void testDisplays (uint8_t totalDisplays) {
 /********************************************************************/
 
 /*
-  Check for serial port manual commands
+  Process serial port commands
 */
-void checkSerial (short leftSpd, short rightSpd) {
+void processRemoteCommand (byte leftSpd, byte rightSpd, uint16_t durationMS = 0) {
   char command = Serial.read();
+  bool moving = false;
 
   if (command != -1) {
     switch(command) {
-      case 'w':                     //  Move Forward
+      case 'w':
       case 'W':
-        forward(leftSpd, rightSpd);
+        forward(50, 50);
+        moving = true;
         break;
 
-      case 's':                     //  Move Backward
+      case 's':
       case 'S':
-        reverse(leftSpd, rightSpd);
+        reverse(50, 50);
+        moving = true;
         break;
 
-      case 'a':                     //  Turn Left
+      case 'a':
       case 'A':
-        turnLeft(leftSpd, rightSpd);
+        turnLeft(50, 50);
+        moving = true;
         break;      
 
-      case 'd':                     //  Turn Right
+      case 'd':
       case 'D':
-        turnRight(leftSpd, rightSpd);
+        turnRight(50, 50);
+        moving = true;
         break;
 
       case 'z':
@@ -937,15 +1141,34 @@ void checkSerial (short leftSpd, short rightSpd) {
       case 'x':
       case 'X':
         stop();
+        mainPan.servo.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
+        break;
+
+      case 'h':
+      case 'H':
+        mainPan.servo.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
+        break;
+
+      case 'm':
+      case 'M':
+        //  Toggle Manual Control
+        if (manualControl) {
+          Serial.println(F("Manual Control is now OFF"));
+          manualControl = false;
+        } else {
+          Serial.println(F("Manual Control is now ON"));
+          manualControl = true;
+        }
         break;
 
       default:
-        Serial.println("Invalid command received!");
-        stop();
+        Serial.println(F("Invalid command received!"));
         break;
     }
-  } else {
-    stop();
+
+    if (moving && (durationMS > 0)) {
+      delay(durationMS);
+    }
   }
 }
 
@@ -1038,6 +1261,8 @@ uint16_t initSensors (void) {
   Initialize servos to defaults
 */
 void initServos (void) {
+  console.println(F("Initializing servos.."));
+
   lastRoutine = String(F("initServos"));
 
   mainPan.pin = SERVO_MAIN_PAN_PIN;
@@ -1062,14 +1287,16 @@ void initServos (void) {
 /********************************************************************/
 void setup (void) {
   int i;
+  uint16_t errorStatus = 0;
+  uint8_t loopCount = 0;
+
+  //  Seed the random number generator
+  randomSeed(analogRead(0));
 
   //  Set motor control pins to OUTPUTs
   for(i = 4; i <= 7; i++) {
     pinMode(i, OUTPUT); 
   }
-
-  uint16_t errorStatus = 0;
-  uint8_t loopCount = 0;
 
   lastRoutine = String(F("SETUP"));
 
@@ -1089,6 +1316,8 @@ void setup (void) {
   digitalWrite(HEARTBEAT_LED, LOW);
 
   if (HAVE_7SEGMENT_DISPLAYS) {
+    console.println(F("Initializing displays.."));
+
     //  Initialize the displays
     initDisplays(MAX_NUMBER_7SEG_DISPLAYS);
 
@@ -1115,14 +1344,14 @@ void loop (void) {
   uint16_t errorStatus = 0;
 
   //  The current date and time from the DS1307 real time clock
-  DateTime now = clock.now();
+//  DateTime now = clock.now();
 
   uint16_t displayInt;
 
   //  Display related variables
   boolean amTime;
   uint8_t displayNr = 0, count = 0, readingNr = 0;
-  uint8_t currentHour = now.hour(), nrDisplays = 0;
+//  uint8_t currentHour = now.hour(), nrDisplays = 0;
 
   uint8_t analogPin = 0;
   uint8_t digitalPin = 0;
@@ -1136,80 +1365,80 @@ void loop (void) {
   // Pulse the heartbeat LED
   pulseDigital(HEARTBEAT_LED, 500);
 
-  currentMinute = now.minute();
-
-  console.println(F("Looping.."));
-
-  /*
-    This is code that only runs ONE time, to initialize
-      special cases.
-  */
-  if (firstLoop) {
-    console.println(F("Entering loop.."));
-
-    lastMinute = currentMinute;
-
-    firstLoop = false;
-  }
+//  currentMinute = now.minute();
 
   //  Check for a manual control command from the serial link
-  console.println(F("Checking for master commands.."));
+  console.println(F("Checking for remote commands.."));
 
   if (console.available()) {
-    checkSerial(100, 100);
-  }
+    processRemoteCommand(100, 100);
+  } else if (manualControl == false) {
+    /*
+      This is code that only runs ONE time, to initialize
+        special cases.
+    */
+    if (firstLoop) {
+      console.println(F("Processing first loop instuctions.."));
 
-  //  Check readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
-  if (MAX_NUMBER_IR > 0) {
-    console.println(F("Checking IR distance sensor readings.."));
+      lastMinute = currentMinute;
 
-    //  Let's see if we're too close to an object.. If so, stop and scan the area
-    if (ir[IR_FRONT_CENTER] <= IR_MIN_DISTANCE_CM) {
-      console.println(F("I'm too close to something, backing awaw.."));
-      reverse(100, 100);
-      delay(2000);
-      turnRight(100, 100);
-      delay(2000);
+      firstLoop = false;
+    }
 
-      //  Scan the area for a clear path - stops motors first
-      errorStatus = scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
+    //  Check readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
+    if (MAX_NUMBER_PING > 0) {
+      console.println(F("Reading PING distance sensors.."));
 
-      if (errorStatus != 0) {
-        processError(errorStatus, F("Unable to scan the area"));
-      } else {
-        console.println(F("I'm looking for the closest and farthest objects.."));
-        //  Find the closest and farthest objects
-        distObject = findDistanceObjects();
+      //  Set the main pan servo to home position before reading it.
+      errorStatus = moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
+      delay(500);
 
-        errorStatus = turnToFarthestObject(&distObject, &mainPan);
+      //  Read the IR sensor(s)
+      for (digitalPin = 0; digitalPin < MAX_NUMBER_PING; digitalPin++) { 
+        ping[digitalPin] = readParallaxPING(digitalPin);
+      }
+
+      displayPING();
+
+      console.println(F("Checking PING distance sensor readings.."));
+
+      //  Let's see if we're too close to an object.. If so, stop and scan the area
+      if (ping[PING_FRONT_CENTER] <= PING_MIN_DISTANCE_CM) {
+        console.println(F("I'm too close to something, so I'm backing away.."));
+
+        reverse(125, 125);
+        delay(2000);
+
+        makeRandomTurn();
 
         if (errorStatus != 0) {
-          processError(errorStatus, F("Could not complete a turn to the farthest object"));
+          processError(errorStatus, F("Unable to scan the area"));
+        } else {
+          console.println(F("I'm looking for the closest and farthest objects.."));
+          //  Find the closest and farthest objects
+          distObject = findDistanceObjects();
 
-          stop();
+          errorStatus = turnToFarthestObject(&distObject, &mainPan);
 
           if (errorStatus != 0) {
-            runAwayRobot(errorStatus);
+            processError(errorStatus, F("Could not complete a turn to the farthest object"));
+
+            stop();
+
+            if (errorStatus != 0) {
+              runAwayRobot(errorStatus);
+            }
           }
         }
+      } else {
+        //  Let's start moving forward!
+        console.println(F("Moving forward.."));
+        forward(100, 100);
       }
     } else {
       //  Let's start moving forward!
       console.println(F("Moving forward.."));
       forward(100, 100);
     }
-  } else {
-    //  Let's start moving forward!
-    console.println(F("Moving forward.."));
-    forward(100, 100);
-  }
-
-  if (MAX_NUMBER_IR > 0) {
-    //  Read the IR sensor(s)
-    for (analogPin = 0; analogPin < MAX_NUMBER_IR; analogPin++) { 
-      ir[analogPin] = readSharpGP2Y0A21YK0F(analogPin);
-    }
-
-    displayIR();
   }
 }
