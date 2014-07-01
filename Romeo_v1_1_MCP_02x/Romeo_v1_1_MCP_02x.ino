@@ -1,7 +1,7 @@
 /*
   Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP)
-  Date:         28-Jun-2014
-  Version:      0.2.0 ALPHA
+  Date:         30-Jun-2014
+  Version:      0.2.1 ALPHA
 
   Platform:     DFRobot Romeo v1.1 Microcntroller (Arduino Uno compatible)
 
@@ -20,10 +20,17 @@
 
                 I've cut the header file down to just what is needed here.
                 -------------------------------------------------------------------------------
-				        v0.2.0 ALPHA 28-Jun-2014:
+				        v0.2.0 ALPHA 29-Jun-2014:
 				        Starting to work on roving behaviors. Also need to test the IR sensor. There is
 					        a slight glitch in the area scanner - it doesn't go all the way to the right.
+
+                Added a manual control toggle command.
 				        -------------------------------------------------------------------------------
+                v0.2.1 ALPHA 30-Jun-2014:
+                Added wheel encoder support.
+                Checks encoders once each loop, to see if the wheels are still moving.
+                This little 4WD Rover can now get out of *most* stuck conditions on its own.
+                -------------------------------------------------------------------------------
 
   Dependencies: Adafruit libraries:
                   Adafruit_Sensor, Adafruit_TMP006, and Adafruit_TCS34725, Adafruit_LEDBackpack,
@@ -56,13 +63,6 @@
 
 #include "Romeo_v1_1_MCP_02x.h"
 #include "Pitches.h"
-
-//  Standard PWM DC control
-int E1 = 5;                           //  M1 Speed Control
-int M1 = 4;                           //  M1 Direction Control
-
-int E2 = 6;                           //  M2 Speed Control
-int M2 = 7;                           //  M2 Direction Control
 
 /********************************************************************/
 /*  Bitmaps for the drawBitMap() routines                           */
@@ -201,6 +201,7 @@ bool firstLoop = true;
 
 //  True when the robot has not moved after an area scan
 bool hasNotMoved = true;
+bool hasMovedForward = false;
 
 //  This will always have the name of the last routine executed before an error
 String lastRoutine;
@@ -220,6 +221,17 @@ bool areaScanValid = false;
 
 //  Toggle for Manual Control
 bool manualControl = false;
+
+//  Encoder variables
+long encoder[2] = { 0, 0 };
+int lastSpeed[2] = { 0, 0 }; 
+
+//  Rover standard PWM DC motor control pins
+int leftPinE1 = 5;                           //  M1 Speed Control
+int leftPinM1 = 4;                           //  M1 Direction Control
+
+int rightPinE2 = 6;                          //  M2 Speed Control
+int rightPinM2 = 7;                          //  M2 Direction Control
 
 /************************************************************/
 /*  Initialize Objects                                      */
@@ -245,67 +257,150 @@ BMSerial console(SERIAL_CONSOLE_RX_PIN, SERIAL_CONSOLE_TX_PIN);
 //  Define the servo object for the pan servo
 StandardServo mainPan;
 
-Servo test;
-
 /********************************************************************/
 /*  Basic movement routines - I've added the ms (millisecond)       */
 /*    parameter to provide away to time how long a move is.         */
+/*                                                                  */
+/*  Rover is configured for standard PWM motor control.             */
 /********************************************************************/
 
-//  Stop 
-void stop (void) {
-  digitalWrite(E1, LOW);  
-  digitalWrite(E2, LOW);     
-}
-
 //  Move forward
-void forward (char a, char b) {
-  analogWrite (E1, a);                //  PWM Speed Control
-  digitalWrite(M1, HIGH);   
+void forward (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+  analogWrite (leftPinE1, leftSpeed);
+  digitalWrite(leftPinM1, HIGH);   
 
-  analogWrite (E2, b);   
-  digitalWrite(M2, HIGH);
-}
-
-//  Move backward 
-void reverse (char a, char b) {
-  analogWrite (E1, a);
-  digitalWrite(M1, LOW);  
-
-  analogWrite (E2, b);   
-  digitalWrite(M2, LOW);
-}
-
-//  Turn Left
-void turnLeft (char a, char b) {
-  analogWrite (E1, a);
-  digitalWrite(M1, LOW);   
-
-  analogWrite (E2, b);   
-  digitalWrite(M2, HIGH);
-}
-
-//  Turn Right
-void turnRight (char a, char b) {
-  analogWrite (E1, a);
-  digitalWrite(M1, HIGH);   
-
-  analogWrite (E2, b);   
-  digitalWrite(M2, LOW);
-}
-
-void makeRandomTurn (uint16_t durationMS = 0) {
-  if (random(1000) < 500) {
-    turnLeft(150, 150);
-  } else {
-    turnRight(150, 150);
-  }
+  analogWrite (rightPinE2, rightSpeed);   
+  digitalWrite(rightPinM2, HIGH);
 
   if (durationMS > 0) {
     delay(durationMS);
   } else {
-    delay(3000);
+    delay(ROVER_DEFAULT_MOVE_TIME_MS);
   }
+
+  hasNotMoved = false;
+  hasMovedForward = true;
+}
+
+//  Move backward 
+void reverse (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+  analogWrite (leftPinE1, leftSpeed);
+  digitalWrite(leftPinM1, LOW);  
+
+  analogWrite (rightPinE2, rightSpeed);   
+  digitalWrite(rightPinM2, LOW);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+  } else {
+    delay(ROVER_DEFAULT_MOVE_TIME_MS);
+  }
+}
+
+//  Stop 
+void stop (void) {
+  digitalWrite(leftPinE1, LOW);  
+  digitalWrite(rightPinE2, LOW);
+
+  hasNotMoved = true;
+  hasMovedForward = false;
+}
+
+//  Turn Left
+void turnLeft (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+  analogWrite (leftPinE1, leftSpeed);
+  digitalWrite(leftPinM1, LOW);   
+
+  analogWrite (rightPinE2, rightSpeed);   
+  digitalWrite(rightPinM2, HIGH);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+  } else {
+    delay(ROVER_DEFAULT_MOVE_TIME_MS);
+  }
+}
+
+//  Turn Right
+void turnRight (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+  analogWrite (leftPinE1, leftSpeed);
+  digitalWrite(leftPinM1, HIGH);   
+
+  analogWrite (rightPinE2, rightSpeed);   
+  digitalWrite(rightPinM2, LOW);
+
+  if (durationMS > 0) {
+    delay(durationMS);
+  } else {
+    delay(ROVER_DEFAULT_MOVE_TIME_MS);
+  }
+}
+
+void backUp (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
+  //  Backup a bit
+  reverse(leftSpeed, rightSpeed, durationMS);
+}
+
+void makeRandomTurn (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
+  if (random(1000) < 500) {
+    turnLeft(leftSpeed, rightSpeed, durationMS);
+  } else {
+    turnRight(leftSpeed, rightSpeed, durationMS);
+  }
+}
+
+/********************************************************************/
+/*  Wheel encoder routines                                          */
+/********************************************************************/
+
+//  Interrupt routine for the left encoder
+void LeftWheelSpeed (void) {
+  //  Count the left wheel encoder interrupts
+  encoder[WHEEL_ENCODER_LEFT]++;
+}
+
+//  Interrupt routine for the right encoder
+void RightWheelSpeed (void) {
+  //  Count the right wheel encoder interrupts
+  encoder[WHEEL_ENCODER_RIGHT]++;
+}
+
+void displayEcoders (void) {
+    console.println(F("Encoder values:"));
+    console.print(F("     Left Wheel = "));
+    console.print(encoder[WHEEL_ENCODER_LEFT]);
+    console.print(F(", Right Wheel = "));
+    console.print(encoder[WHEEL_ENCODER_RIGHT]);
+    console.println(F("."));
+
+    console.println(F("Last Speed values:"));
+    console.print(F("     Left Wheel = "));
+    console.print(lastSpeed[WHEEL_ENCODER_LEFT]);
+    console.print(F(", Right Wheel = "));
+    console.print(lastSpeed[WHEEL_ENCODER_RIGHT]);
+    console.println(F("."));
+
+    console.println();
+}
+
+unsigned long readEncoders (unsigned long timer) {
+  if ((millis() - timer) > 100) {                  
+    displayEcoders();
+
+    // Record the latest speed values
+    lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
+    lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
+
+    // Clear the data buffer
+    encoder[WHEEL_ENCODER_LEFT] = 0;
+    encoder[WHEEL_ENCODER_RIGHT] = 0;
+
+    return millis();
+  }
+}
+
+bool wheelsMoving (void) {
+  return ((encoder[WHEEL_ENCODER_LEFT] > lastSpeed[WHEEL_ENCODER_LEFT]) && (encoder[WHEEL_ENCODER_RIGHT] > lastSpeed[WHEEL_ENCODER_RIGHT]));
 }
 
 /************************************************************/
@@ -506,15 +601,15 @@ void displayPING (void) {
 
   lastRoutine = String(F("displayPING"));
   
-  console.println("PING Ultrasonic Sensor readings:");
+  console.println(F("PING Ultrasonic Sensor readings:"));
   
   //  Display PING sensor readings (cm)
   while (sensorNr < MAX_NUMBER_PING) {
-    console.print("Ping #");
+    console.print(F("Ping #"));
     console.print(sensorNr + 1);
-    console.print(" range = ");
+    console.print(F(" range = "));
     console.print(ping[sensorNr]);
-    console.println(" cm");
+    console.println(F(" cm"));
 
     sensorNr += 1;
   }
@@ -689,13 +784,13 @@ uint16_t moveServoPw (StandardServo *servo, int servoPosition) {
     //  Move the servo
 
 /*
-    console.print("(");
+    console.print(F("("));
     console.print(lastRoutine);
-    console.print(") Moving the ");
+    console.print("F()) Moving the "));
     console.print(servo->descr);
-    console.print(" servo to position ");
+    console.print(F(" servo to position "));
     console.print(servoPosition);
-    console.println(" uS..");
+    console.println(F(" uS.."));
 */
 
     servo->servo.writeMicroseconds(position);
@@ -839,7 +934,7 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
           if (MAX_NUMBER_IR > 0) {
             areaScan[readingNr].ir = readSharpGP2Y0A21YK0F(IR_FRONT_CENTER);
           }
-
+/*
           if (HAVE_COLOR_SENSOR) {
             areaScan[readingNr].color = readColorSensor();
           }
@@ -847,7 +942,7 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
           if (HAVE_HEAT_SENSOR) {
             areaScan[readingNr].heat = readHeatSensor();
           }
-          
+*/          
           areaScan[readingNr].positionDeg = positionDeg;
 
           readingNr += 1;
@@ -900,18 +995,16 @@ uint16_t turnToClosestObject (DistanceObject *distObj, StandardServo *pan) {
     delay(2500);
   } else {
     //  Set the pan servo to home position (straight ahead)
-    moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
+    errorStatus = moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
     delay(250);
 
     //  Take a reading from the PING distance sensor
     pingReading = readParallaxPING(PING_FRONT_CENTER);
 
     if (pingReading < PING_MIN_DISTANCE_CM) {
-      //  Backup a bit
-      reverse(125, 125);
-      delay(2500);
+      backUp(125, 125, 2500);
 
-      makeRandomTurn();
+      makeRandomTurn(100, 100);
     }
   }
 
@@ -935,18 +1028,16 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
     delay(2500);
   } else {
     //  Set the pan servo to home position (straight ahead)
-    moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
+    errorStatus = moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
     delay(250);
 
     //  Take a reading from the PING distance sensor
     pingReading = readParallaxPING(PING_FRONT_CENTER);
 
     if (pingReading < PING_MIN_DISTANCE_CM) {
-      //  Backup a bit
-      reverse(125, 125);
-      delay(2500);
+      backUp(125, 125, 2500);
 
-      makeRandomTurn();
+      makeRandomTurn(100, 100);
     }
   }
 
@@ -1104,7 +1195,7 @@ void testDisplays (uint8_t totalDisplays) {
   Process serial port commands
 */
 void processRemoteCommand (byte leftSpd, byte rightSpd, uint16_t durationMS = 0) {
-  char command = Serial.read();
+  char command = console.read();
   bool moving = false;
 
   if (command != -1) {
@@ -1135,7 +1226,7 @@ void processRemoteCommand (byte leftSpd, byte rightSpd, uint16_t durationMS = 0)
 
       case 'z':
       case 'Z':
-        Serial.println("Hello");
+        console.println(F("Hello"));
         break;
 
       case 'x':
@@ -1153,16 +1244,16 @@ void processRemoteCommand (byte leftSpd, byte rightSpd, uint16_t durationMS = 0)
       case 'M':
         //  Toggle Manual Control
         if (manualControl) {
-          Serial.println(F("Manual Control is now OFF"));
+          console.println(F("Manual Control is now OFF"));
           manualControl = false;
         } else {
-          Serial.println(F("Manual Control is now ON"));
+          console.println(F("Manual Control is now ON"));
           manualControl = true;
         }
         break;
 
       default:
-        Serial.println(F("Invalid command received!"));
+        console.println(F("Invalid command received!"));
         break;
     }
 
@@ -1286,7 +1377,7 @@ void initServos (void) {
 /*  Runs once to set things up                                      */
 /********************************************************************/
 void setup (void) {
-  int i;
+  int pin;
   uint16_t errorStatus = 0;
   uint8_t loopCount = 0;
 
@@ -1294,8 +1385,8 @@ void setup (void) {
   randomSeed(analogRead(0));
 
   //  Set motor control pins to OUTPUTs
-  for(i = 4; i <= 7; i++) {
-    pinMode(i, OUTPUT); 
+  for (pin = 4; pin <= 7; pin++) {
+    pinMode(pin, OUTPUT); 
   }
 
   lastRoutine = String(F("SETUP"));
@@ -1335,6 +1426,22 @@ void setup (void) {
   console.println(F("Doing initial area scan.."));
   scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
   console.println(F("Leaving setup.."));
+
+  // Init the interrupt mode for the digital pin 2
+  attachInterrupt(WHEEL_ENCODER_LEFT, LeftWheelSpeed, CHANGE);
+  // Init the interrupt mode for the digital pin 3
+  attachInterrupt(WHEEL_ENCODER_RIGHT, RightWheelSpeed, CHANGE);
+
+  //  Initialize encoder data values
+  lastSpeed[WHEEL_ENCODER_LEFT] = -1;
+  lastSpeed[WHEEL_ENCODER_RIGHT] = -1;
+
+  // Clear the encoder data buffer
+  encoder[WHEEL_ENCODER_LEFT] = 0;
+  encoder[WHEEL_ENCODER_RIGHT] = 0;
+
+  hasNotMoved = true;
+  hasMovedForward = false;
 }
 
 /********************************************************************/
@@ -1342,6 +1449,9 @@ void setup (void) {
 /********************************************************************/
 void loop (void) {
   uint16_t errorStatus = 0;
+
+  // Print manager timer
+  static unsigned long timer = 0;
 
   //  The current date and time from the DS1307 real time clock
 //  DateTime now = clock.now();
@@ -1371,7 +1481,7 @@ void loop (void) {
   console.println(F("Checking for remote commands.."));
 
   if (console.available()) {
-    processRemoteCommand(100, 100);
+    processRemoteCommand(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
   } else if (manualControl == false) {
     /*
       This is code that only runs ONE time, to initialize
@@ -1406,10 +1516,9 @@ void loop (void) {
       if (ping[PING_FRONT_CENTER] <= PING_MIN_DISTANCE_CM) {
         console.println(F("I'm too close to something, so I'm backing away.."));
 
-        reverse(125, 125);
-        delay(2000);
+        backUp(125, 125);
 
-        makeRandomTurn();
+        makeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
 
         if (errorStatus != 0) {
           processError(errorStatus, F("Unable to scan the area"));
@@ -1433,12 +1542,35 @@ void loop (void) {
       } else {
         //  Let's start moving forward!
         console.println(F("Moving forward.."));
-        forward(100, 100);
+        forward(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
       }
     } else {
       //  Let's start moving forward!
       console.println(F("Moving forward.."));
-      forward(100, 100);
+      forward(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
     }
+
+    //  Check the encoders to make sure the motors are still spinning
+    if (hasMovedForward && WHEEL_ENCODER_SUPPORT) {
+      console.println(F("Rover has moved forward - checking the encoders.."));
+
+      displayEcoders();
+
+      if (!wheelsMoving()) {
+        //  Backup and scan the area
+        backUp(125, 125, 3000);
+
+        makeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
+
+        errorStatus = scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
+
+        turnToFarthestObject(&distObject, &mainPan);
+      }
+
+      lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
+      lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
+    }
+
+    delay(1000);
   }
 }

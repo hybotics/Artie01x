@@ -1,7 +1,7 @@
 /*
-	Program: 	W.A.L.T.E.R. 2.0, Navigation_03x.h - Navigation Control Program sketch header file
-	Date:		28-Jun-2014
-	Version:	0.2.0 ALPHA
+  Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP) header file
+	Date:		30-Jun-2014
+	Version:	0.2.1 ALPHA
 
 	Platform:	Arduino Mega 2560 ADK,
 					Lynxmotion's SSC-32 Servo Controller,
@@ -25,8 +25,8 @@
 
 #define	I2C_SLAVE_ADDRESS				0x50
 
-#define	BUILD_VERSION					"0.2.0"
-#define	BUILD_DATE 						"28-Jun-2014 ALPHA"
+#define	BUILD_VERSION					"0.2.1"
+#define	BUILD_DATE 						"30-Jun-2014 ALPHA"
 #define	BUILD_BOARD						"Romeo v1.1 All In One (Arduino Uno compatible)"
 
 #define	LOOP_DELAY_SECONDS				10
@@ -75,8 +75,16 @@
 	Peripheral Settings, for Displays, Sound, etc.
 */
 
+#define WHEEL_ENCODER_SUPPORT			true
+
 #define	WHEEL_ENCODER_LEFT_PIN			2
 #define	WHEEL_ENCODER_RIGHT_PIN			3
+
+#define WHEEL_ENCODER_LEFT 				0
+#define WHEEL_ENCODER_RIGHT 			1
+
+#define ROVER_DEFAULT_MOVE_TIME_MS		2000
+#define ROVER_DEFAULT_MOVE_SPEED		100
 
 //	Display constants
 #define	MAX_NUMBER_7SEG_DISPLAYS		0
@@ -313,9 +321,10 @@ struct AreaScanReading {
 	float ir;
 	uint16_t ping;
 
+/*
 	ColorSensor color;
 	HeatSensor heat;
-
+*/
 	int positionDeg;
 };
 
