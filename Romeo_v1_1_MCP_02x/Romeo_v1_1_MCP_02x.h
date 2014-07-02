@@ -19,9 +19,9 @@
 #ifndef	__ROMEO_V1_1_MCP_H__
 #define	__ROMEO_V1_1_MCP_H__
 
-/************************************************************/
-/*	General settings 										*/
-/************************************************************/
+/********************************************************************/
+/*	General settings 												*/
+/********************************************************************/
 
 #define	I2C_SLAVE_ADDRESS				0x50
 
@@ -43,9 +43,10 @@
 #define	DISPLAY_TIME_FREQ_MIN			15 				//	Minutes
 #define	DISPLAY_TEMPERATURE_FREQ_MIN	15 				//	Minutes
 
-/*
-	Optional Sensors and Peripherals enables (true)/disables (false)
-*/
+/************************************************************************/
+/*	Optional Sensors and Peripherals enables (true)/disables (false) 	*/
+/************************************************************************/
+
 #define HAVE_COLOR_SENSOR				false
 #define HAVE_HEAT_SENSOR				false
 #define HAVE_DS1307_RTC					false
@@ -59,21 +60,21 @@
 
 #define HAVE_7SEGMENT_DISPLAYS			false
 
-/*********************************************************
-	Romeo v1.1 All In One Microcontroller (Arduino) Settings
-*********************************************************/
-
-/*
-	Serial ports
-*/
+/************************************************************/
+/*	Serial ports 											*/
+/************************************************************/
 
 //	Hardware Serial0: Console and Debug port
 #define	SERIAL_CONSOLE_RX_PIN			0
 #define	SERIAL_CONSOLE_TX_PIN			1
 
-/*
-	Peripheral Settings, for Displays, Sound, etc.
-*/
+/************************************************************/
+/*	Peripheral Settings, for Displays, Sound, etc.			*/
+/************************************************************/
+
+/************************************************************/
+/*	Settings for A.R.T.I.E.									*/
+/************************************************************/
 
 #define WHEEL_ENCODER_SUPPORT			true
 
@@ -84,23 +85,33 @@
 #define WHEEL_ENCODER_RIGHT 			1
 
 #define ROVER_DEFAULT_MOVE_TIME_MS		2000
-#define ROVER_DEFAULT_MOVE_SPEED		100
+#define ROVER_DEFAULT_MOVE_SPEED		50
+#define ROVER_DEFAULT_RAMP_INCR			10
 
-//	Display constants
+#define ROVER_DEFAULT_SCAN_START_DEG	-90
+#define ROVER_DEFAULT_SCAN_END_DEG		90
+#define ROVER_DEFAULT_SCAN_INCR_DEG		10
+
+/************************************************************/
+/*	Display constants										*/
+/************************************************************/
+
 #define	MAX_NUMBER_7SEG_DISPLAYS		0
 #define	SEVEN_SEG_BASE_ADDR				0x70
 
 #define	MATRIX_DISPLAY_ADDR				SEVEN_SEG_BASE_ADDR + MAX_NUMBER_7SEG_DISPLAYS
 
-/*
-	Other Resources
-*/
+/************************************************************/
+/*	Other Resources											*/
+/************************************************************/
+
 #define	HEARTBEAT_LED 					13
 #define	COLOR_SENSOR_LED				12
 
-/*
-	Sensor settings
-*/
+/************************************************************/
+/*	Sensor Settings											*/
+/************************************************************/
+
 #define	MAX_NUMBER_AREA_READINGS		18
 #define AREA_SCAN_DEGREE_INCREMENT		20
 
@@ -233,9 +244,9 @@
 #define	SERVO_MOTOR_LEFT_MIN			500
 #define	SERVO_MOTOR_LEFT_MAX			2500
 
-/*********************************************************
-	Structs for data we store on various onboard devices
-*********************************************************/
+/************************************************************/
+/*	Structs for data we store on various onboard devices	*/
+/************************************************************/
 
 typedef enum MotorLocation {
 	Left,

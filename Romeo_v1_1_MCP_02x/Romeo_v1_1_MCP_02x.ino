@@ -350,7 +350,7 @@ void makeRandomTurn (short leftSpeed, short rightSpeed, uint16_t durationMS = 0)
 }
 
 /********************************************************************/
-/*  Wheel encoder routines                                          */
+/*  Wheel interrupt encoder routines                                */
 /********************************************************************/
 
 //  Interrupt routine for the left encoder
@@ -843,7 +843,7 @@ uint16_t moveServoDegrees (StandardServo *servo, int servoDegrees) {
 DistanceObject findDistanceObjects () {
   uint8_t readingNr;
 
-  DistanceObject distObj = {0, 0, 0, 0, 0, 0, 0, 0};
+  DistanceObject distObj = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
   console.println(F("Finding the closest and farthest objects.."));
 
@@ -979,7 +979,7 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 }
 
 /*
-  Turn towards the farthest detected object
+  Turn towards the closest detected object
 */
 uint16_t turnToClosestObject (DistanceObject *distObj, StandardServo *pan) {
   uint16_t errorStatus = 0;
@@ -1424,7 +1424,7 @@ void setup (void) {
 
   //  Do an initial scan of the immediate area
   console.println(F("Doing initial area scan.."));
-  scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
+  scanArea(&mainPan, -ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
   console.println(F("Leaving setup.."));
 
   // Init the interrupt mode for the digital pin 2
@@ -1562,7 +1562,7 @@ void loop (void) {
 
         makeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
 
-        errorStatus = scanArea(&mainPan, -90, 90, AREA_SCAN_DEGREE_INCREMENT);
+        errorStatus = scanArea(&mainPan, ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
 
         turnToFarthestObject(&distObject, &mainPan);
       }
