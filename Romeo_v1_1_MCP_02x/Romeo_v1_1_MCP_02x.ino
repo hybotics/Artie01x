@@ -1,9 +1,9 @@
 /*
   Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP)
-  Date:         30-Jun-2014
-  Version:      0.2.1 ALPHA
+  Date:         08-Jul-2014
+  Version:      0.2.4 ALPHA
 
-  Platform:     DFRobot Romeo v1.1 Microcntroller (Arduino Uno compatible)
+  Platform:     DFRobot Romeo v1.1 Microcontroller (Arduino Uno compatible)
 
   Purpose:      To have FUN with a little 4WD rover - can control the Rover over a serial link.
 
@@ -31,7 +31,21 @@
                 Checks encoders once each loop, to see if the wheels are still moving.
                 This little 4WD Rover can now get out of *most* stuck conditions on its own.
                 -------------------------------------------------------------------------------
-
+                v0.2.2 ALPHA 03-Jul-2014:
+                Changed platform specific routine names to have a prefix. For the Romeo v1.1 All In One
+                  controller, this is "romeoV11" and for the Romeo v2, it will be "romeoV2" if that
+                  is necessary.
+                ---------------------------------------------------------------------------------
+                v0.2.3 ALPHA 06-Jul-2014:
+                Changed the check for moving wheels to include moving forward or reverse, depending
+                  on which way the rover was moving last.
+                ---------------------------------------------------------------------------------
+                v0.2.4 ALPHA 08-Jul-2014:
+                Changed movingDirection to roverStatus, typeDef Direction to typeDef Status.
+                Added statuses Idle, Error, and Scanning.
+                No longer checks the encoder if status is Idle or Scanning.
+                The processError() routine now sets roverStatus = Error.
+                ---------------------------------------------------------------------------------
   Dependencies: Adafruit libraries:
                   Adafruit_Sensor, Adafruit_TMP006, and Adafruit_TCS34725, Adafruit_LEDBackpack,
                   Adafruit_GFX libraries
@@ -197,11 +211,7 @@ uint8_t lastMinute = -1;
 long minuteCount = 0;           //  Count the time, in minutes, since we were last restarted
 
 //  Enable run once only loop code to run
-bool firstLoop = true;
-
-//  True when the robot has not moved after an area scan
-bool hasNotMoved = true;
-bool hasMovedForward = false;
+bool startingUp = true;
 
 //  This will always have the name of the last routine executed before an error
 String lastRoutine;
@@ -218,6 +228,13 @@ float ir[MAX_NUMBER_IR];
 //  Area scan readings
 AreaScanReading areaScan[MAX_NUMBER_AREA_READINGS];
 bool areaScanValid = false;
+
+/*
+  Rover control variables
+*/
+
+//  Rover status - Idle, Forward, Reverse, Scanning, Stopped, TurningLeft, or TurningRight
+Status roverStatus = Idle;
 
 //  Toggle for Manual Control
 bool manualControl = false;
@@ -265,7 +282,7 @@ StandardServo mainPan;
 /********************************************************************/
 
 //  Move forward
-void forward (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+void romeoV11Forward (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   analogWrite (leftPinE1, leftSpeed);
   digitalWrite(leftPinM1, HIGH);   
 
@@ -278,12 +295,11 @@ void forward (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
     delay(ROVER_DEFAULT_MOVE_TIME_MS);
   }
 
-  hasNotMoved = false;
-  hasMovedForward = true;
+  roverStatus = Forward;
 }
 
 //  Move backward 
-void reverse (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+void romeoV11Reverse (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   analogWrite (leftPinE1, leftSpeed);
   digitalWrite(leftPinM1, LOW);  
 
@@ -295,19 +311,20 @@ void reverse (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   } else {
     delay(ROVER_DEFAULT_MOVE_TIME_MS);
   }
+
+  roverStatus = Reverse;
 }
 
 //  Stop 
-void stop (void) {
+void romeoV11Stop (void) {
   digitalWrite(leftPinE1, LOW);  
   digitalWrite(rightPinE2, LOW);
 
-  hasNotMoved = true;
-  hasMovedForward = false;
+  roverStatus = Stopped;
 }
 
 //  Turn Left
-void turnLeft (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+void romeoV11TurnLeft (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   analogWrite (leftPinE1, leftSpeed);
   digitalWrite(leftPinM1, LOW);   
 
@@ -319,10 +336,12 @@ void turnLeft (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   } else {
     delay(ROVER_DEFAULT_MOVE_TIME_MS);
   }
+
+  roverStatus = TurningLeft;
 }
 
 //  Turn Right
-void turnRight (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
+void romeoV11TurnRight (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   analogWrite (leftPinE1, leftSpeed);
   digitalWrite(leftPinM1, HIGH);   
 
@@ -334,18 +353,22 @@ void turnRight (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   } else {
     delay(ROVER_DEFAULT_MOVE_TIME_MS);
   }
+
+  roverStatus = TurningRight;
 }
 
-void backUp (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
-  //  Backup a bit
-  reverse(leftSpeed, rightSpeed, durationMS);
+void romeoV11BackUp (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
+  //  Back up a bit
+  romeoV11Reverse(leftSpeed, rightSpeed, durationMS);
+
+  roverStatus = Reverse;
 }
 
-void makeRandomTurn (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
+void romeoV11MakeRandomTurn (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
   if (random(1000) < 500) {
-    turnLeft(leftSpeed, rightSpeed, durationMS);
+    romeoV11TurnLeft(leftSpeed, rightSpeed, durationMS);
   } else {
-    turnRight(leftSpeed, rightSpeed, durationMS);
+    romeoV11TurnRight(leftSpeed, rightSpeed, durationMS);
   }
 }
 
@@ -399,7 +422,7 @@ unsigned long readEncoders (unsigned long timer) {
   }
 }
 
-bool wheelsMoving (void) {
+bool wheelsAreMoving (void) {
   return ((encoder[WHEEL_ENCODER_LEFT] > lastSpeed[WHEEL_ENCODER_LEFT]) && (encoder[WHEEL_ENCODER_RIGHT] > lastSpeed[WHEEL_ENCODER_RIGHT]));
 }
 
@@ -490,7 +513,7 @@ uint16_t soundAlarm (uint8_t nrAlarms) {
 
   We're in a situation we can't get out of on our own.
 */
-uint16_t callForHelp (uint8_t nrCalls, uint8_t nrAlarms, uint32_t callDelay) {
+uint16_t callForHelp (uint8_t nrCalls, uint8_t nrAlarms, uint32_t callDelaySeconds) {
   uint16_t errorStatus = 0;
   uint8_t count;
 
@@ -500,8 +523,8 @@ uint16_t callForHelp (uint8_t nrCalls, uint8_t nrAlarms, uint32_t callDelay) {
 
     soundAlarm(nrAlarms);
 
-    //  20 second delay between calls for help
-    delay(callDelay);
+    //  Delay between calls for help
+    delay(callDelaySeconds * 1000);
   }
 
   return errorStatus;
@@ -511,9 +534,11 @@ uint16_t callForHelp (uint8_t nrCalls, uint8_t nrAlarms, uint32_t callDelay) {
   We can't stop the motors!
 */
 void runAwayRobot (uint16_t errorStatus) {
+  romeoV11Stop();
+
   processError(errorStatus, F("Runaway robot"));
 
-  callForHelp(2, 5, 250);
+  callForHelp(2, 5, 10);
 }
 
 /********************************************************************/
@@ -877,7 +902,7 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
 
   //  Stop, so we can do this scan
   console.println(F("Stopping to scan the area.."));
-  stop();
+  romeoV11Stop();
 
   //  Check the parameters
   if (startDeg > stopDeg) {
@@ -910,6 +935,8 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
       /*
         Continue normal processing
       */
+      roverStatus = Scanning;
+
       readingNr = 0;
       positionDeg = startDeg;
 
@@ -963,9 +990,6 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
   } else {
     console.println(F("The area scan is valid.."));
 
-    //  Robot has not moved
-    hasNotMoved = true;
-
     //  Set the number of readings taken
     nrAreaReadings = readingNr;
 
@@ -974,6 +998,7 @@ uint16_t scanArea (StandardServo *pan, int startDeg, int stopDeg, int incrDeg) {
   }
 
   console.println(F("Leaving the area scanner.."));
+  roverStatus = Stopped;
 
   return errorStatus;
 }
@@ -987,11 +1012,11 @@ uint16_t turnToClosestObject (DistanceObject *distObj, StandardServo *pan) {
 
   if (distObj->closestPosPING < 0) {
     //  Turn to the right
-    turnRight(150, 150);
+    romeoV11TurnRight(150, 150, ROVER_DEFAULT_MOVE_SPEED);
     delay(2500);
   } else if (distObj->closestPosPING > 0) {
     //  Turn to the left
-    turnLeft(150, 150);
+    romeoV11TurnLeft(150, 150, ROVER_DEFAULT_MOVE_SPEED);
     delay(2500);
   } else {
     //  Set the pan servo to home position (straight ahead)
@@ -1002,11 +1027,13 @@ uint16_t turnToClosestObject (DistanceObject *distObj, StandardServo *pan) {
     pingReading = readParallaxPING(PING_FRONT_CENTER);
 
     if (pingReading < PING_MIN_DISTANCE_CM) {
-      backUp(125, 125, 2500);
+      romeoV11BackUp(125, 125, 2500);
 
-      makeRandomTurn(100, 100);
+      romeoV11MakeRandomTurn(100, 100, ROVER_DEFAULT_MOVE_TIME_MS);
     }
   }
+
+  roverStatus = Idle;
 
   return errorStatus;
 }
@@ -1020,11 +1047,11 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
 
   if (distObj->farthestPosPING < 0) {
     //  Turn to the right
-    turnRight(150, 150);
+    romeoV11TurnRight(150, 150);
     delay(2500);
   } else if (distObj->farthestPosPING >= 0) {
     //  Turn to the left
-    turnLeft(150, 150);
+    romeoV11TurnLeft(150, 150, ROVER_DEFAULT_MOVE_SPEED);
     delay(2500);
   } else {
     //  Set the pan servo to home position (straight ahead)
@@ -1035,11 +1062,13 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
     pingReading = readParallaxPING(PING_FRONT_CENTER);
 
     if (pingReading < PING_MIN_DISTANCE_CM) {
-      backUp(125, 125, 2500);
+      romeoV11BackUp(125, 125, 2500);
 
-      makeRandomTurn(100, 100);
+      romeoV11MakeRandomTurn(100, 100, ROVER_DEFAULT_MOVE_SPEED);
     }
   }
+
+  roverStatus = Idle;
 
   return errorStatus;
 }
@@ -1053,7 +1082,7 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
 */
 void announce (BMSerial *port) {
   port->println();
-  port->print("4WD Rover Master Control Program (MCP), version ");
+  port->print("A.R.T.I.E., Master Control Program (MCP), version ");
   port->print(BUILD_VERSION);
   port->print(" on ");
   port->println(BUILD_DATE);
@@ -1076,6 +1105,8 @@ void processError (byte errCode, String errMsg) {
   console.print(F(", Message: "));
   console.print(errMsg);
   console.println(F("!"));
+
+  roverStatus = Error;
 }
 
 /*
@@ -1199,66 +1230,61 @@ void processRemoteCommand (byte leftSpd, byte rightSpd, uint16_t durationMS = 0)
   bool moving = false;
 
   if (command != -1) {
-    switch(command) {
-      case 'w':
-      case 'W':
-        forward(50, 50);
-        moving = true;
-        break;
+    if (manualControl && (command != 'm') && (command != 'M')) {
+      switch(command) {
+        case 'w':
+        case 'W':
+          romeoV11Forward(leftSpd, rightSpd, durationMS);
+          moving = true;
+          break;
 
-      case 's':
-      case 'S':
-        reverse(50, 50);
-        moving = true;
-        break;
+        case 's':
+        case 'S':
+          romeoV11Reverse(leftSpd, rightSpd, durationMS);
+          moving = true;
+          break;
 
-      case 'a':
-      case 'A':
-        turnLeft(50, 50);
-        moving = true;
-        break;      
+        case 'a':
+        case 'A':
+          romeoV11TurnLeft(leftSpd, rightSpd, durationMS);
+          moving = true;
+          break;      
 
-      case 'd':
-      case 'D':
-        turnRight(50, 50);
-        moving = true;
-        break;
+        case 'd':
+        case 'D':
+          romeoV11TurnRight(leftSpd, rightSpd, durationMS);
+          moving = true;
+          break;
 
-      case 'z':
-      case 'Z':
-        console.println(F("Hello"));
-        break;
+        case 'z':
+        case 'Z':
+          console.println(F("Hello"));
+          break;
 
-      case 'x':
-      case 'X':
-        stop();
-        mainPan.servo.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
-        break;
+        case 'x':
+        case 'X':
+          romeoV11Stop();
+          mainPan.servo.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
+          break;
 
-      case 'h':
-      case 'H':
-        mainPan.servo.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
-        break;
+        case 'h':
+        case 'H':
+          mainPan.servo.writeMicroseconds(SERVO_MAIN_PAN_HOME + SERVO_MAIN_PAN_OFFSET);
+          break;
 
-      case 'm':
-      case 'M':
-        //  Toggle Manual Control
-        if (manualControl) {
-          console.println(F("Manual Control is now OFF"));
-          manualControl = false;
-        } else {
-          console.println(F("Manual Control is now ON"));
-          manualControl = true;
-        }
-        break;
+        default:
+          console.println(F("Invalid command received!"));
+          break;
+      }
+    } else {
+      //  Toggle Manual Control
+      manualControl = !manualControl;
 
-      default:
-        console.println(F("Invalid command received!"));
-        break;
-    }
-
-    if (moving && (durationMS > 0)) {
-      delay(durationMS);
+      if (manualControl) {
+        console.println(F("Manual Control is disabled"));
+      } else {
+        console.println(F("Manual Control is enabled"));
+      }
     }
   }
 }
@@ -1440,8 +1466,7 @@ void setup (void) {
   encoder[WHEEL_ENCODER_LEFT] = 0;
   encoder[WHEEL_ENCODER_RIGHT] = 0;
 
-  hasNotMoved = true;
-  hasMovedForward = false;
+  roverStatus = Idle;
 }
 
 /********************************************************************/
@@ -1476,25 +1501,24 @@ void loop (void) {
   pulseDigital(HEARTBEAT_LED, 500);
 
 //  currentMinute = now.minute();
+  /*
+    This is code that only runs ONE time, to initialize
+      special cases.
+  */
+  if (startingUp) {
+    console.println(F("Processing startup instuctions.."));
+
+    lastMinute = currentMinute;
+
+    startingUp = false;
+  }
 
   //  Check for a manual control command from the serial link
   console.println(F("Checking for remote commands.."));
 
   if (console.available()) {
     processRemoteCommand(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
-  } else if (manualControl == false) {
-    /*
-      This is code that only runs ONE time, to initialize
-        special cases.
-    */
-    if (firstLoop) {
-      console.println(F("Processing first loop instuctions.."));
-
-      lastMinute = currentMinute;
-
-      firstLoop = false;
-    }
-
+  } else {
     //  Check readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
     if (MAX_NUMBER_PING > 0) {
       console.println(F("Reading PING distance sensors.."));
@@ -1516,9 +1540,9 @@ void loop (void) {
       if (ping[PING_FRONT_CENTER] <= PING_MIN_DISTANCE_CM) {
         console.println(F("I'm too close to something, so I'm backing away.."));
 
-        backUp(125, 125);
+        romeoV11BackUp(125, 125);
 
-        makeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
+        romeoV11MakeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
 
         if (errorStatus != 0) {
           processError(errorStatus, F("Unable to scan the area"));
@@ -1532,45 +1556,56 @@ void loop (void) {
           if (errorStatus != 0) {
             processError(errorStatus, F("Could not complete a turn to the farthest object"));
 
-            stop();
+            romeoV11Stop();
 
             if (errorStatus != 0) {
               runAwayRobot(errorStatus);
             }
           }
         }
-      } else {
-        //  Let's start moving forward!
-        console.println(F("Moving forward.."));
-        forward(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
       }
-    } else {
-      //  Let's start moving forward!
-      console.println(F("Moving forward.."));
-      forward(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
     }
 
-    //  Check the encoders to make sure the motors are still spinning
-    if (hasMovedForward && WHEEL_ENCODER_SUPPORT) {
-      console.println(F("Rover has moved forward - checking the encoders.."));
+    if (WHEEL_ENCODER_SUPPORT) {
+      console.println(F("Checking the encoders.."));
 
-      displayEcoders();
+      //  Check to make sure the motors are still spinning
+      if (wheelsAreMoving()) {
+        //  Update encoder data
+        lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
+        lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
+      } else if ((roverStatus != Idle) && (roverStatus != Scanning) && (roverStatus != Error)) {
+        //  We are apparently stuck
+        displayEcoders();
 
-      if (!wheelsMoving()) {
-        //  Backup and scan the area
-        backUp(125, 125, 3000);
+        if (roverStatus == Forward) {
+          //  Backup a bit
+          romeoV11BackUp(125, 125);
+        } else if (roverStatus == Reverse) {
+          //  Move forward a bit
+          romeoV11Forward(125, 125);
+        }
 
-        makeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
+        romeoV11MakeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED, 1000);
 
         errorStatus = scanArea(&mainPan, ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
 
         turnToFarthestObject(&distObject, &mainPan);
-      }
 
-      lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
-      lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
+        delay(1000);
+      } else if (roverStatus == Error) {
+        callForHelp(5, 5, 10);
+      }
     }
 
-    delay(1000);
+    if (roverStatus != Error) {
+      //  Let's start moving forward!
+      console.println(F("Moving forward.."));
+      romeoV11Forward(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
+    } else {
+      processError(999, F("Unrecoverable ERROR"));
+      romeoV11Stop();
+      callForHelp(5, 5, 10);
+    }
   }
 }

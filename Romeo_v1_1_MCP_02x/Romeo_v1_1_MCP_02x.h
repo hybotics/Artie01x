@@ -1,11 +1,9 @@
 /*
-  Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP) header file
-	Date:		30-Jun-2014
-	Version:	0.2.1 ALPHA
+	Program:	4WD Rover (DFRobot Baron Rover) Master Control Program (MCP) header file
+	Date:		08-Jul-2014
+	Version:	0.2.4 ALPHA
 
-	Platform:	Arduino Mega 2560 ADK,
-					Lynxmotion's SSC-32 Servo Controller,
-					and a 3DOF (Raise/Lower, Wrist Rotate, Open/Close) Little Grip gripper
+	Platform:	DFRobot Romeo v1.1 Microcontroller (Arduino Uno compatible)
 
 	Purpose:	To experiment with various sensor configurations, tracking objects (heat or
 					color based), course following, manipulation of the environment, vision, and
@@ -25,8 +23,8 @@
 
 #define	I2C_SLAVE_ADDRESS				0x50
 
-#define	BUILD_VERSION					"0.2.1"
-#define	BUILD_DATE 						"30-Jun-2014 ALPHA"
+#define	BUILD_VERSION					"0.2.4"
+#define	BUILD_DATE 						"08-Jul-2014 ALPHA"
 #define	BUILD_BOARD						"Romeo v1.1 All In One (Arduino Uno compatible)"
 
 #define	LOOP_DELAY_SECONDS				10
@@ -84,7 +82,7 @@
 #define WHEEL_ENCODER_LEFT 				0
 #define WHEEL_ENCODER_RIGHT 			1
 
-#define ROVER_DEFAULT_MOVE_TIME_MS		2000
+#define ROVER_DEFAULT_MOVE_TIME_MS		1500
 #define ROVER_DEFAULT_MOVE_SPEED		50
 #define ROVER_DEFAULT_RAMP_INCR			10
 
@@ -128,7 +126,7 @@
 //	Parallax PING Untrasonic sensors
 #define	MAX_NUMBER_PING					1
 #define	PING_PIN_BASE					12			//	Digital 12
-#define	PING_MIN_DISTANCE_CM			20.0 		//	In CM, which is approximately 6.3"
+#define	PING_MIN_DISTANCE_CM			14.0 		//	In CM, which is approximately 6.3"
 
 #define	PING_FRONT_CENTER				0
 #define	PING_FRONT_LEFT					1
@@ -253,6 +251,17 @@ typedef enum MotorLocation {
 	Right,
 	Front,
 	Back
+};
+
+typedef enum Status {
+	Error,
+	Idle,
+	Scanning,
+	Stopped,
+	TurningLeft,
+	TurningRight,
+	Forward,
+	Reverse
 };
 
 struct bmp180Data {
