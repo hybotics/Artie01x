@@ -239,9 +239,9 @@ float ir[MAX_NUMBER_IR];
 AreaScanReading areaScan[MAX_NUMBER_AREA_READINGS];
 bool areaScanValid = false;
 
-/*
-  Rover control variables
-*/
+/************************************************************/
+/*  Rover control variables                                 */
+/************************************************************/
 
 //  Rover status - Idle, Forward, Reverse, Scanning, Stopped, TurningLeft, or TurningRight
 Status roverStatus = Idle;
@@ -325,7 +325,9 @@ void romeoV11Reverse (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) 
   roverStatus = Reverse;
 }
 
-//  Stop 
+/*
+  Stop
+*/ 
 void romeoV11Stop (void) {
   digitalWrite(leftPinE1, LOW);  
   digitalWrite(rightPinE2, LOW);
@@ -333,7 +335,9 @@ void romeoV11Stop (void) {
   roverStatus = Stopped;
 }
 
-//  Turn Left
+/*
+  Turn Left for a period of time in ms
+*/
 void romeoV11TurnLeft (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   analogWrite (leftPinE1, leftSpeed);
   digitalWrite(leftPinM1, LOW);   
@@ -350,7 +354,9 @@ void romeoV11TurnLeft (char leftSpeed, char rightSpeed, uint16_t durationMS = 0)
   roverStatus = TurningLeft;
 }
 
-//  Turn Right
+/*
+  Turn Right for a period of time in ms
+*/
 void romeoV11TurnRight (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) {
   analogWrite (leftPinE1, leftSpeed);
   digitalWrite(leftPinM1, HIGH);   
@@ -367,6 +373,9 @@ void romeoV11TurnRight (char leftSpeed, char rightSpeed, uint16_t durationMS = 0
   roverStatus = TurningRight;
 }
 
+/*
+  Backup for a period of time in ms
+*/
 void romeoV11BackUp (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
   //  Back up a bit
   romeoV11Reverse(leftSpeed, rightSpeed, durationMS);
@@ -374,6 +383,9 @@ void romeoV11BackUp (short leftSpeed, short rightSpeed, uint16_t durationMS = 0)
   roverStatus = Reverse;
 }
 
+/*
+  Make a random turn for a period of time in ms
+*/
 void romeoV11MakeRandomTurn (short leftSpeed, short rightSpeed, uint16_t durationMS = 0) {
   if (random(1000) < 500) {
     romeoV11TurnLeft(leftSpeed, rightSpeed, durationMS);
@@ -427,18 +439,19 @@ void displayEncoders (void) {
 /*
   Read the encoders and reset the data buffer
 */
-unsigned long readEncoders (unsigned long timer) {
-  if ((millis() - timer) > 100) {                  
+unsigned long readEncoders (unsigned long timerValue) {
+  if ((millis() - timerValue) > 100) {                  
     displayEncoders();
 
-    // Record the latest encoder values
+    //  Record the latest encoder values
     lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
     lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
 
-    // Clear the data buffer
+    //  Clear the data buffer
     encoder[WHEEL_ENCODER_LEFT] = 0;
     encoder[WHEEL_ENCODER_RIGHT] = 0;
 
+    //  Return the current value of the timer
     return millis();
   }
 }
