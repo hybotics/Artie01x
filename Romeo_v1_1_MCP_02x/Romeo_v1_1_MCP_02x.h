@@ -1,7 +1,7 @@
 /*
-	Program:	4WD Rover (DFRobot Baron Rover) Master Control Program (MCP) header file
-	Date:		08-Jul-2014
-	Version:	0.2.4 ALPHA
+	Program:	A.R.T.I.E. Rover (DFRobot Baron Rover) Master Control Program (MCP) header file
+	Date:		10-Jul-2014
+	Version:	0.2.5 ALPHA
 
 	Platform:	DFRobot Romeo v1.1 Microcontroller (Arduino Uno compatible)
 
@@ -23,8 +23,8 @@
 
 #define	I2C_SLAVE_ADDRESS				0x50
 
-#define	BUILD_VERSION					"0.2.4"
-#define	BUILD_DATE 						"08-Jul-2014 ALPHA"
+#define	BUILD_VERSION					"0.2.5 ALPHA"
+#define	BUILD_DATE 						"11-Jul-2014"
 #define	BUILD_BOARD						"Romeo v1.1 All In One (Arduino Uno compatible)"
 
 #define	LOOP_DELAY_SECONDS				10
@@ -82,13 +82,16 @@
 #define WHEEL_ENCODER_LEFT 				0
 #define WHEEL_ENCODER_RIGHT 			1
 
-#define ROVER_DEFAULT_MOVE_TIME_MS		1500
+#define ROVER_DEFAULT_DELAY_MS			1000
+#define ROVER_DEFAULT_MOVE_TIME_MS		500
 #define ROVER_DEFAULT_MOVE_SPEED		50
 #define ROVER_DEFAULT_RAMP_INCR			10
 
 #define ROVER_DEFAULT_SCAN_START_DEG	-90
 #define ROVER_DEFAULT_SCAN_END_DEG		90
 #define ROVER_DEFAULT_SCAN_INCR_DEG		10
+
+#define ROVER_TURN_RANDOM_TIME_MS		750
 
 /************************************************************/
 /*	Display constants										*/
@@ -126,19 +129,19 @@
 //	Parallax PING Untrasonic sensors
 #define	MAX_NUMBER_PING					1
 #define	PING_PIN_BASE					12			//	Digital 12
-#define	PING_MIN_DISTANCE_CM			14.0 		//	In CM, which is approximately 6.3"
+#define	PING_MIN_DISTANCE_CM			12.0 		//	In CM, which is approximately 6.3"
 
 #define	PING_FRONT_CENTER				0
 #define	PING_FRONT_LEFT					1
 #define	PING_FRONT_RIGHT				2
 
-/*********************************************************
-	Sound generation constants
-*********************************************************/
+/********************************************************/
+/*	Sound generation constants 							*/
+/********************************************************/
 
-/*********************************************************
-	Servo Settings
-*********************************************************/
+/********************************************************/
+/*	Servo Settings 										*/
+/********************************************************/
 
 #define	SERVO_MAX_DEGREES				90
 #define	SERVO_CENTER_MS					1500
@@ -149,6 +152,7 @@
 #define SERVO_MAIN_PAN_NAME				"Main Pan"
 #define	SERVO_MAIN_PAN_HOME				SERVO_CENTER_MS
 #define	SERVO_MAIN_PAN_OFFSET			65
+#define SERVO_MAIN_PAN_STABLE_MS		750
 #define	SERVO_MAIN_PAN_RIGHT_MIN		500
 #define	SERVO_MAIN_PAN_LEFT_MAX			2500
 

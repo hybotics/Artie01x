@@ -1,7 +1,7 @@
-/*
+ /*
   Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP)
-  Date:         08-Jul-2014
-  Version:      0.2.4 ALPHA
+  Date:         11-Jul-2014
+  Version:      0.2.5 ALPHA
 
   Platform:     DFRobot Romeo v1.1 Microcontroller (Arduino Uno compatible)
 
@@ -42,10 +42,20 @@
                 ---------------------------------------------------------------------------------
                 v0.2.4 ALPHA 08-Jul-2014:
                 Changed movingDirection to roverStatus, typeDef Direction to typeDef Status.
+
                 Added statuses Idle, Error, and Scanning.
+
                 No longer checks the encoder if status is Idle or Scanning.
+
                 The processError() routine now sets roverStatus = Error.
                 ---------------------------------------------------------------------------------
+                v0.2.5 ALPHA 11-Jul-2014:
+                Added setting SERVO_MAIN_PAN_STABLE_MS in the header file to set a delay for the pan
+                  servo to become stable before doing anything.
+
+                Added definition and code to initialize the camera tilt servo.
+                ---------------------------------------------------------------------------------
+
   Dependencies: Adafruit libraries:
                   Adafruit_Sensor, Adafruit_TMP006, and Adafruit_TCS34725, Adafruit_LEDBackpack,
                   Adafruit_GFX libraries
@@ -272,7 +282,7 @@ Adafruit_8x8matrix matrix8x8 = Adafruit_8x8matrix();
 BMSerial console(SERIAL_CONSOLE_RX_PIN, SERIAL_CONSOLE_TX_PIN);
 
 //  Define the servo object for the pan servo
-StandardServo mainPan;
+StandardServo cameraTilt, mainPan;
 
 /********************************************************************/
 /*  Basic movement routines - I've added the ms (millisecond)       */
@@ -376,19 +386,27 @@ void romeoV11MakeRandomTurn (short leftSpeed, short rightSpeed, uint16_t duratio
 /*  Wheel interrupt encoder routines                                */
 /********************************************************************/
 
-//  Interrupt routine for the left encoder
+/*
+  Interrupt routine for the left encoder
+*/
 void LeftWheelSpeed (void) {
   //  Count the left wheel encoder interrupts
   encoder[WHEEL_ENCODER_LEFT]++;
 }
 
-//  Interrupt routine for the right encoder
+/*
+  Interrupt routine for the right encoder
+*/
 void RightWheelSpeed (void) {
   //  Count the right wheel encoder interrupts
   encoder[WHEEL_ENCODER_RIGHT]++;
 }
 
-void displayEcoders (void) {
+/*
+  Display the current wheel encoder values
+*/
+void displayEncoders (void) {
+    console.println();
     console.println(F("Encoder values:"));
     console.print(F("     Left Wheel = "));
     console.print(encoder[WHEEL_ENCODER_LEFT]);
@@ -406,11 +424,14 @@ void displayEcoders (void) {
     console.println();
 }
 
+/*
+  Read the encoders and reset the data buffer
+*/
 unsigned long readEncoders (unsigned long timer) {
   if ((millis() - timer) > 100) {                  
-    displayEcoders();
+    displayEncoders();
 
-    // Record the latest speed values
+    // Record the latest encoder values
     lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
     lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
 
@@ -422,7 +443,13 @@ unsigned long readEncoders (unsigned long timer) {
   }
 }
 
+/*
+  Check to see if the wheels are still moving
+*/
 bool wheelsAreMoving (void) {
+  console.println(F("Checking wheel motion.."));
+  displayEncoders();
+
   return ((encoder[WHEEL_ENCODER_LEFT] > lastSpeed[WHEEL_ENCODER_LEFT]) && (encoder[WHEEL_ENCODER_RIGHT] > lastSpeed[WHEEL_ENCODER_RIGHT]));
 }
 
@@ -679,6 +706,9 @@ long microsecondsToCentimeters (long microseconds) {
   return microseconds / 29 / 2;
 }
 
+/*
+  Read the TCS74325 RGB Color sensor
+*/
 ColorSensor readColorSensor (void) {
   ColorSensor colorData;
 
@@ -689,6 +719,9 @@ ColorSensor readColorSensor (void) {
   return colorData;
 }
 
+/*
+  Read the TMP006 Heat sensor
+*/
 HeatSensor readHeatSensor (void) {
   HeatSensor heatData;
 
@@ -699,7 +732,7 @@ HeatSensor readHeatSensor (void) {
 }
 
 /*
-  Parallax Ping))) Sensor 
+  Read a Parallax Ping))) Sensor 
 
   This routine reads a PING))) ultrasonic rangefinder and returns the
     distance to the closest object in range. To do this, it sends a pulse
@@ -780,12 +813,13 @@ float readSharpGP2Y0A21YK0F (byte sensorNr) {
 
   return distance;
 }
+
 /********************************************************************/
 /*  Servo related routines                                          */
 /********************************************************************/
 
 /*
-    Move a servo by pulse width in ms (500ms - 2500ms) - Modified to use HardwareSerial2()
+    Move a servo by pulse width in ms (500ms - 2500ms)
 */
 uint16_t moveServoPw (StandardServo *servo, int servoPosition) {
   uint16_t errorStatus = 0;
@@ -829,7 +863,7 @@ uint16_t moveServoPw (StandardServo *servo, int servoPosition) {
 }
 
 /*
-    Move a servo by degrees (-90 to 90) or (0 - 180) - Modified to use BMSerial
+    Move a servo by degrees (-90 to 90) or (0 - 180)
 */
 uint16_t moveServoDegrees (StandardServo *servo, int servoDegrees) {
   uint16_t servoPulse;
@@ -865,6 +899,9 @@ uint16_t moveServoDegrees (StandardServo *servo, int servoDegrees) {
   return errorStatus;
 }
 
+/*
+  Find the closest and farthest objects in an area scan
+*/
 DistanceObject findDistanceObjects () {
   uint8_t readingNr;
 
@@ -1033,7 +1070,7 @@ uint16_t turnToClosestObject (DistanceObject *distObj, StandardServo *pan) {
     }
   }
 
-  roverStatus = Idle;
+  roverStatus = Stopped;
 
   return errorStatus;
 }
@@ -1068,7 +1105,7 @@ uint16_t turnToFarthestObject (DistanceObject *distObj, StandardServo *pan) {
     }
   }
 
-  roverStatus = Idle;
+  roverStatus = Stopped;
 
   return errorStatus;
 }
@@ -1382,6 +1419,22 @@ void initServos (void) {
 
   lastRoutine = String(F("initServos"));
 
+  cameraTilt.pin = SERVO_CAMERA_TILT_PIN;
+  cameraTilt.descr = String(SERVO_CAMERA_TILT_NAME);
+  cameraTilt.offset = SERVO_CAMERA_TILT_OFFSET;
+  cameraTilt.homePos = SERVO_CAMERA_TILT_HOME;
+  cameraTilt.msPulse = 0;
+  cameraTilt.angle = 0;
+  cameraTilt.minPulse = SERVO_CAMERA_TILT_UP_MIN;
+  cameraTilt.maxPulse = SERVO_CAMERA_TILT_DOWN_MAX;
+  cameraTilt.maxDegrees = SERVO_MAX_DEGREES;
+  cameraTilt.error = 0;
+
+  //  Set the servo to home position
+  pinMode(SERVO_CAMERA_TILT_PIN, OUTPUT);
+  cameraTilt.servo.attach(SERVO_CAMERA_TILT_PIN);
+  moveServoPw(&cameraTilt, SERVO_CAMERA_TILT_HOME);
+
   mainPan.pin = SERVO_MAIN_PAN_PIN;
   mainPan.descr = String(SERVO_MAIN_PAN_NAME);
   mainPan.offset = SERVO_MAIN_PAN_OFFSET;
@@ -1450,7 +1503,7 @@ void setup (void) {
 
   //  Do an initial scan of the immediate area
   console.println(F("Doing initial area scan.."));
-  scanArea(&mainPan, -ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
+  scanArea(&mainPan, ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
   console.println(F("Leaving setup.."));
 
   // Init the interrupt mode for the digital pin 2
@@ -1509,8 +1562,6 @@ void loop (void) {
     console.println(F("Processing startup instuctions.."));
 
     lastMinute = currentMinute;
-
-    startingUp = false;
   }
 
   //  Check for a manual control command from the serial link
@@ -1519,15 +1570,15 @@ void loop (void) {
   if (console.available()) {
     processRemoteCommand(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
   } else {
-    //  Check readings from all the GP2Y0A21YK0F Analog IR range sensors, if any, and store them
+    //  Check readings from all the Parallax PING ultrasonic range sensors, if any, and store them
     if (MAX_NUMBER_PING > 0) {
       console.println(F("Reading PING distance sensors.."));
 
       //  Set the main pan servo to home position before reading it.
       errorStatus = moveServoPw(&mainPan, SERVO_MAIN_PAN_HOME);
-      delay(500);
+      delay(SERVO_MAIN_PAN_STABLE_MS);
 
-      //  Read the IR sensor(s)
+      //  Read the ultrasonic sensor(s)
       for (digitalPin = 0; digitalPin < MAX_NUMBER_PING; digitalPin++) { 
         ping[digitalPin] = readParallaxPING(digitalPin);
       }
@@ -1542,7 +1593,7 @@ void loop (void) {
 
         romeoV11BackUp(125, 125);
 
-        romeoV11MakeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED);
+        romeoV11MakeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED, ROVER_TURN_RANDOM_TIME_MS);
 
         if (errorStatus != 0) {
           processError(errorStatus, F("Unable to scan the area"));
@@ -1566,38 +1617,6 @@ void loop (void) {
       }
     }
 
-    if (WHEEL_ENCODER_SUPPORT) {
-      console.println(F("Checking the encoders.."));
-
-      //  Check to make sure the motors are still spinning
-      if (wheelsAreMoving()) {
-        //  Update encoder data
-        lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
-        lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
-      } else if ((roverStatus != Idle) && (roverStatus != Scanning) && (roverStatus != Error)) {
-        //  We are apparently stuck
-        displayEcoders();
-
-        if (roverStatus == Forward) {
-          //  Backup a bit
-          romeoV11BackUp(125, 125);
-        } else if (roverStatus == Reverse) {
-          //  Move forward a bit
-          romeoV11Forward(125, 125);
-        }
-
-        romeoV11MakeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED, 1000);
-
-        errorStatus = scanArea(&mainPan, ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
-
-        turnToFarthestObject(&distObject, &mainPan);
-
-        delay(1000);
-      } else if (roverStatus == Error) {
-        callForHelp(5, 5, 10);
-      }
-    }
-
     if (roverStatus != Error) {
       //  Let's start moving forward!
       console.println(F("Moving forward.."));
@@ -1607,5 +1626,46 @@ void loop (void) {
       romeoV11Stop();
       callForHelp(5, 5, 10);
     }
+
+    if (WHEEL_ENCODER_SUPPORT) {
+      console.println(F("Checking the encoders.."));
+
+      //  Check to make sure the motors are still spinning
+      if (wheelsAreMoving()) {
+        console.println(F("Wheels are moving.."));
+
+        //  Update encoder data
+        lastSpeed[WHEEL_ENCODER_LEFT] = encoder[WHEEL_ENCODER_LEFT];
+        lastSpeed[WHEEL_ENCODER_RIGHT] = encoder[WHEEL_ENCODER_RIGHT];
+      } else if ((roverStatus != Idle) && (roverStatus != Scanning) && (roverStatus != Error)) {
+        console.println(F("Wheels are NOT moving.."));
+
+        //  We are apparently stuck
+        displayEncoders();
+
+        if (roverStatus == Forward) {
+          //  Backup a bit
+          romeoV11BackUp(125, 125);
+        } else if (roverStatus == Reverse) {
+          //  Move forward a bit
+          romeoV11Forward(125, 125);
+        }
+
+        romeoV11MakeRandomTurn(ROVER_DEFAULT_MOVE_SPEED, ROVER_DEFAULT_MOVE_SPEED, ROVER_TURN_RANDOM_TIME_MS);
+
+        errorStatus = scanArea(&mainPan, ROVER_DEFAULT_SCAN_START_DEG, ROVER_DEFAULT_SCAN_END_DEG, ROVER_DEFAULT_SCAN_INCR_DEG);
+
+        turnToFarthestObject(&distObject, &mainPan);
+
+        delay(ROVER_DEFAULT_DELAY_MS);
+      } else if (roverStatus == Error) {
+        
+        callForHelp(5, 5, 10);
+      }
+    }
+  }
+
+  if (startingUp) {
+    startingUp = false;
   }
 }
