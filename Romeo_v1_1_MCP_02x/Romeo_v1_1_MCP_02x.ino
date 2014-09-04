@@ -1,6 +1,6 @@
  /*
-  Program:      4WD Rover (DFRobot Baron Rover) Master Control Program (MCP)
-  Date:         11-Jul-2014
+  Program:      A.R.T.I.E. (DFRobot Baron Rover) Master Control Program (MCP)
+  Date:         23-Jul-2014
   Version:      0.2.5 ALPHA
 
   Platform:     DFRobot Romeo v1.1 Microcontroller (Arduino Uno compatible)
@@ -282,7 +282,7 @@ Adafruit_8x8matrix matrix8x8 = Adafruit_8x8matrix();
 BMSerial console(SERIAL_CONSOLE_RX_PIN, SERIAL_CONSOLE_TX_PIN);
 
 //  Define the servo object for the pan servo
-StandardServo cameraTilt, mainPan;
+StandardServo mainPan, irEyeTilt;
 
 /********************************************************************/
 /*  Basic movement routines - I've added the ms (millisecond)       */
@@ -299,13 +299,14 @@ void romeoV11Forward (char leftSpeed, char rightSpeed, uint16_t durationMS = 0) 
   analogWrite (rightPinE2, rightSpeed);   
   digitalWrite(rightPinM2, HIGH);
 
+  roverStatus = Forward;
+/*
   if (durationMS > 0) {
     delay(durationMS);
   } else {
     delay(ROVER_DEFAULT_MOVE_TIME_MS);
   }
-
-  roverStatus = Forward;
+*/
 }
 
 //  Move backward 
@@ -843,32 +844,31 @@ uint16_t moveServoPw (StandardServo *servo, int servoPosition) {
 
   servo->error = 0;
   
-  if ((position >= servo->minPulse) && (position <= servo->maxPulse)) {
+  if ((servoPosition >= servo->minPulse) && (servoPosition <= servo->maxPulse)) {
+//  if ((position >= servo->minPulse) && (position <= servo->maxPulse)) {
     if (servo->maxDegrees == 180) {
       servo->angle += 90;
     }
-  }
 
-  if ((position < servo->minPulse) || (position > servo->maxPulse)) {
+    //  Move the servo
+    servo->servo.writeMicroseconds(position);
+  } else {
+    console.print(F("(moveServoPw) servoPosition = "));
+    console.print(servoPosition);
+    console.print(F(", position = "));
+    console.print(position);
+    console.print(F(", '"));
+    console.print(servo->descr);
+    console.print(F("', Min Pulse = "));
+    console.print(servo->minPulse);
+    console.print(F(", Max Pulse = "));
+    console.print(servo->maxPulse);
+    console.print(F(", Offset = "));
+    console.print(servo->offset);
+    console.println(F("."));
+
     errorStatus = 201;
     processError(errorStatus, F("Servo pulse is out of range"));
-  } else {
-    //  Move the servo
-
-/*
-    console.print(F("("));
-    console.print(lastRoutine);
-    console.print("F()) Moving the "));
-    console.print(servo->descr);
-    console.print(F(" servo to position "));
-    console.print(servoPosition);
-    console.println(F(" uS.."));
-*/
-
-    servo->servo.writeMicroseconds(position);
-  }
-
-  if (errorStatus != 0) {
     servo->error = errorStatus;
   }
 
@@ -1432,21 +1432,21 @@ void initServos (void) {
 
   lastRoutine = String(F("initServos"));
 
-  cameraTilt.pin = SERVO_CAMERA_TILT_PIN;
-  cameraTilt.descr = String(SERVO_CAMERA_TILT_NAME);
-  cameraTilt.offset = SERVO_CAMERA_TILT_OFFSET;
-  cameraTilt.homePos = SERVO_CAMERA_TILT_HOME;
-  cameraTilt.msPulse = 0;
-  cameraTilt.angle = 0;
-  cameraTilt.minPulse = SERVO_CAMERA_TILT_UP_MIN;
-  cameraTilt.maxPulse = SERVO_CAMERA_TILT_DOWN_MAX;
-  cameraTilt.maxDegrees = SERVO_MAX_DEGREES;
-  cameraTilt.error = 0;
+  irEyeTilt.pin = SERVO_IR_EYE_TILT_PIN;
+  irEyeTilt.descr = String(SERVO_IR_EYE_TILT_NAME);
+  irEyeTilt.offset = SERVO_IR_EYE_TILT_OFFSET;
+  irEyeTilt.homePos = SERVO_IR_EYE_TILT_HOME;
+  irEyeTilt.msPulse = 0;
+  irEyeTilt.angle = 0;
+  irEyeTilt.minPulse = SERVO_IR_EYE_TILT_UP_MIN;
+  irEyeTilt.maxPulse = SERVO_IR_EYE_TILT_DOWN_MAX;
+  irEyeTilt.maxDegrees = SERVO_MAX_DEGREES;
+  irEyeTilt.error = 0;
 
   //  Set the servo to home position
-  pinMode(SERVO_CAMERA_TILT_PIN, OUTPUT);
-  cameraTilt.servo.attach(SERVO_CAMERA_TILT_PIN);
-  moveServoPw(&cameraTilt, SERVO_CAMERA_TILT_HOME);
+  pinMode(SERVO_IR_EYE_TILT_PIN, OUTPUT);
+  irEyeTilt.servo.attach(SERVO_IR_EYE_TILT_PIN);
+  moveServoPw(&irEyeTilt, SERVO_IR_EYE_TILT_HOME);
 
   mainPan.pin = SERVO_MAIN_PAN_PIN;
   mainPan.descr = String(SERVO_MAIN_PAN_NAME);

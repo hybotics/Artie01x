@@ -1,6 +1,6 @@
 /*
-	Program:	A.R.T.I.E. Rover (DFRobot Baron Rover) Master Control Program (MCP) header file
-	Date:		10-Jul-2014
+	Program:	A.R.T.I.E. (DFRobot Baron Rover) Master Control Program (MCP) header file
+	Date:		23-Jul-2014
 	Version:	0.2.5 ALPHA
 
 	Platform:	DFRobot Romeo v1.1 Microcontroller (Arduino Uno compatible)
@@ -24,7 +24,7 @@
 #define	I2C_SLAVE_ADDRESS				0x50
 
 #define	BUILD_VERSION					"0.2.5 ALPHA"
-#define	BUILD_DATE 						"11-Jul-2014"
+#define	BUILD_DATE 						"23-Jul-2014"
 #define	BUILD_BOARD						"Romeo v1.1 All In One (Arduino Uno compatible)"
 
 #define	LOOP_DELAY_SECONDS				10
@@ -74,7 +74,7 @@
 /*	Settings for A.R.T.I.E.									*/
 /************************************************************/
 
-#define WHEEL_ENCODER_SUPPORT			true
+#define WHEEL_ENCODER_SUPPORT			false
 
 #define	WHEEL_ENCODER_LEFT_PIN			2
 #define	WHEEL_ENCODER_RIGHT_PIN			3
@@ -129,11 +129,19 @@
 //	Parallax PING Untrasonic sensors
 #define	MAX_NUMBER_PING					1
 #define	PING_PIN_BASE					12			//	Digital 12
-#define	PING_MIN_DISTANCE_CM			12.0 		//	In CM, which is approximately 6.3"
+#define	PING_MIN_DISTANCE_CM			17.0 		//	In CM, which is approximately 6.3"
 
 #define	PING_FRONT_CENTER				0
 #define	PING_FRONT_LEFT					1
 #define	PING_FRONT_RIGHT				2
+
+//	I/O Pin Definitions
+#define IR_EYE_LEFT_APIN				0					
+#define IR_EYE_RIGHT_APIN				1
+#define IR_EYE_UP_APIN					2
+#define IR_EYE_DOWN_APIN				3
+
+#define IR_EYE_LEDS_DPIN				11
 
 /********************************************************/
 /*	Sound generation constants 							*/
@@ -157,94 +165,12 @@
 #define	SERVO_MAIN_PAN_LEFT_MAX			2500
 
 //	Greater = Down, Lesser = Up
-#define	SERVO_MAIN_TILT_PIN				9
-#define SERVO_MAIN_TILT_NAME			"Main Tilt"
-#define	SERVO_MAIN_TILT_HOME			SERVO_CENTER_MS
-#define	SERVO_MAIN_TILT_OFFSET			0
-#define	SERVO_MAIN_TILT_UP_MIN			600
-#define	SERVO_MAIN_TILT_DOWN_MAX		2500
-
-//	Lesser = Right, Greater = Left
-#define	SERVO_CAMERA_PAN_PIN			10
-#define SERVO_CAMERA_PAN_NAME			"Camera Pan"
-#define	SERVO_CAMERA_PAN_HOME			SERVO_CENTER_MS
-#define	SERVO_CAMERA_PAN_OFFSET			0
-#define	SERVO_CAMERA_PAN_RIGHT_MIN		600
-#define	SERVO_CAMERA_PAN_LEFT_MAX		2500
-
-//	Greater = Down, Lesser = Up
-#define	SERVO_CAMERA_TILT_PIN			11
-#define SERVO_CAMERA_TILT_NAME			"Camera Tilt"
-#define	SERVO_CAMERA_TILT_HOME			SERVO_CENTER_MS
-#define	SERVO_CAMERA_TILT_OFFSET		0
-#define	SERVO_CAMERA_TILT_UP_MIN		600
-#define	SERVO_CAMERA_TILT_DOWN_MAX		2500
-
-//	Lesser = Up, Greater = Down
-#define	SERVO_GRIP_LIFT_PIN				4
-#define SERVO_GRIP_LIFT_NAME			"Grip Lift"
-#define	SERVO_GRIP_LIFT_HOME			900
-#define	SERVO_GRIP_LIFT_OFFSET			-100
-#define	SERVO_GRIP_LIFT_MIN				900
-#define	SERVO_GRIP_LIFT_MAX				1750
-
-//	Lesser = , Greater = 
-#define	SERVO_GRIP_ELBOW_PIN			6
-#define SERVO_GRIP_ELBOW_NAME			"Grip Elbow"
-#define	SERVO_GRIP_ELBOW_HOME			SERVO_CENTER_MS
-#define	SERVO_GRIP_ELBOW_OFFSET			0
-#define	SERVO_GRIP_ELBOW_MIN			500
-#define	SERVO_GRIP_ELBOW_MAX			2500
-
-//	Lesser = Right, Greater = Left
-#define	SERVO_GRIP_WRIST_PIN			6
-#define SERVO_GRIP_WRIST_NAME			"Grip Wrist"
-#define	SERVO_GRIP_WRIST_HOME			SERVO_CENTER_MS
-#define	SERVO_GRIP_WRIST_OFFSET			0
-#define	SERVO_GRIP_WRIST_MIN			550
-#define	SERVO_GRIP_WRIST_MAX			2500
-
-//	Greater = Close, Lesser = Open
-#define	SERVO_GRIP_GRAB_PIN				7
-#define SERVO_GRIP_GRAB_NAME			"Grip Grab"
-#define	SERVO_GRIP_GRAB_HOME			500
-#define	SERVO_GRIP_GRAB_OFFSET			0
-#define	SERVO_GRIP_GRAB_MIN				500
-#define	SERVO_GRIP_GRAB_MAX				2000
-
-/*
-	Pin 8 has been intentionally left unconnected
-*/
-
-//	Lesser = , Greater = 
-#define	SERVO_LEFT_TILT_PIN				9
-#define SERVO_LEFT_TILT_NAME			"Left Tilt"
-#define	SERVO_LEFT_TILT_HOME			SERVO_CENTER_MS
-#define	SERVO_LEFT_TILT_OFFSET			-50
-#define	SERVO_LEFT_TILT_UP_MIN			600
-#define	SERVO_LEFT_TILT_DOWN_MAX		2500
-
-/*
-	Pin 10 has been intentionally left unconnected
-*/
-
-//	Lesser = , Greater = 
-#define	SERVO_RIGHT_TILT_PIN			11
-#define SERVO_RIGHT_TILT_NAME			"Right Tilt"
-#define	SERVO_RIGHT_TILT_HOME			SERVO_CENTER_MS
-#define	SERVO_RIGHT_TILT_OFFSET			-50
-#define	SERVO_RIGHT_TILT_UP_MIN			600
-#define	SERVO_RIGHT_TILT_DOWN_MAX		2500
-
-//	Left Servo Motor assignments, Lesser = , Greater =
-#define	SERVO_MOTOR_LEFT_PIN			12
-#define SERVO_MOTOR_LEFT_NAME			"Left Servo Motor"
-#define	SERVO_MOTOR_LEFT_NEUTRAL		SERVO_MOTOR_NEUTRAL
-#define	SERVO_MOTOR_LEFT_OFFSET 		0
-#define	SERVO_MOTOR_LEFT_SPEED_ADJ		-35
-#define	SERVO_MOTOR_LEFT_DIRECTION		false
-#define	SERVO_MOTOR_LEFT_MIN			500
-#define	SERVO_MOTOR_LEFT_MAX			2500
+#define	SERVO_IR_EYE_TILT_PIN			9
+#define SERVO_IR_EYE_TILT_NAME			"IR Eye Tilt"
+#define	SERVO_IR_EYE_TILT_HOME			SERVO_CENTER_MS
+#define	SERVO_IR_EYE_TILT_OFFSET		0
+#define	SERVO_IR_EYE_TILT_UP_MIN		600
+#define	SERVO_IR_EYE_TILT_DOWN_MAX		2500
 
 /************************************************************/
 /*	Structs for data we store on various onboard devices	*/
